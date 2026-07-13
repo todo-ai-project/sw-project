@@ -1,362 +1,378 @@
-//frontend>src>pages>TodoList>TodoList.jsx
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import TodoItem from './TodoItem';
+import { ChevronDown, ChevronRight, Check, Plus, Trash2, Target, Pencil } from 'lucide-react';
+import Jelly from '../Auth/components/Jelly';
+import Card from '../Auth/components/Card';
+import PrimaryBtn from '../Auth/components/PrimaryBtn';
+import { C, GRAD, PAGE_BG } from '../Auth/components/tokens';
+
+const JELLY_COLORS = [
+  { bell: '#BAE6FD', glow: '#38BDF8', name: '스카이' },
+  { bell: '#F9A8D4', glow: '#F472B6', name: '핑크' },
+  { bell: '#C4B5FD', glow: '#A78BFA', name: '라벤더' },
+  { bell: '#99F6E4', glow: '#2DD4BF', name: '민트' },
+  { bell: '#FDE68A', glow: '#FBBF24', name: '선샤인' },
+  { bell: '#FCA5A5', glow: '#F87171', name: '코럴' },
+  { bell: '#D9F99D', glow: '#A3E635', name: '라임' },
+  { bell: '#E0E7FF', glow: '#818CF8', name: '퍼플' },
+];
+const ACCESSORIES = ['🎀', '👑', '🌸', '⭐', '🐚', '🪸', '🌊', '✨'];
+const SUB_COLORS = ['#0EA5E9', '#06B6D4', '#10B981', '#F59E0B', '#6366F1', '#C026D3', '#0891B2', '#059669'];
 
 function TodoList() {
   const navigate = useNavigate();
-
   const [todos, setTodos] = useState([]);
   const [goals, setGoals] = useState([]);
-  const [inputValue, setInputValue] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [activeGoalID, setActiveGoalID] = useState('all');
-  const [addGoalID, setAddGoalID] = useState('');
-  const [selectMode, setSelectMode] = useState(false);
-  const [selectedIDs, setSelectedIDs] = useState(new Set());
+  const [open, setOpen] = useState(new Set());
+  const [newText, setNewText] = useState({});
+  const [adding, setAdding] = useState(null);
+  const [editMode, setEditMode] = useState(false);
+  const [selColor, setSelColor] = useState(0);
+  const [selAcc, setSelAcc] = useState(0);
 
   const API_URL = 'http://localhost:5001/api/todos';
   const GOALS_API_URL = 'http://localhost:5001/api/goals';
-  const CURRENT_USER_ID = "test_user_1";
+
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('idToken');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+  const CURRENT_USER_ID = localStorage.getItem('userID') || 'test_user_1';
 
   const fetchTodos = useCallback(async () => {
     try {
       const response = await axios.get(API_URL, {
-        params: { userID: CURRENT_USER_ID }
+        params: { userID: CURRENT_USER_ID },
+        headers: getAuthHeaders()
       });
       if (response.data.success) {
-        const mappedTodos = response.data.data.map(item => ({
+        setTodos(response.data.data.map(item => ({
           id: item.id,
-          text: item.content || "내용 없음",
-          targetDate: item.targetDate || "",
-          completed: item.isDone || false,
-          goalID: item.goalID || "",
-          goalName: item.goalName || "",
-          highlighted: false
-        }));
-        setTodos(mappedTodos);
+          text: item.content || '내용 없음',
+          targetDate: item.targetDate || '',
+          done: item.isDone || false,
+          goalID: item.goalID || '',
+          goalName: item.goalName || '',
+        })));
       }
     } catch (error) {
-      console.error("데이터 로드 실패:", error);
+      console.error('데이터 로드 실패:', error);
     }
-  }, [API_URL]);
+  }, []);
 
   const fetchGoals = useCallback(async () => {
     try {
-      const response = await axios.get(GOALS_API_URL);
+      const response = await axios.get(GOALS_API_URL, { headers: getAuthHeaders() });
       if (response.data.success) {
         setGoals(response.data.data);
+        if (response.data.data.length > 0) {
+          setOpen(new Set([response.data.data[0].id]));
+        }
       }
     } catch (error) {
-      console.error("목표 로드 실패:", error);
+      console.error('목표 로드 실패:', error);
     }
-  }, [GOALS_API_URL]);
+  }, []);
 
-  useEffect(() => {
-    fetchTodos();
-    fetchGoals();
-  }, [fetchTodos, fetchGoals]);
+  useEffect(() => { fetchTodos(); fetchGoals(); }, [fetchTodos, fetchGoals]);
 
-  // goals API에서 가져온 데이터로 탭 생성 (정확한 ID-이름 매핑)
-  const goalMap = {};
-  goals.forEach(g => {
-    goalMap[g.id] = g.goalName || g.id;
-  });
-  const goalTabs = goals
-    .filter(g => todos.some(t => t.goalID === g.id))
-    .map(g => ({ id: g.id, name: g.goalName || g.id }));
+  const toggleOpen = (id) => setOpen(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
-  const today = new Date();
-  const formattedDate = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}(${['일', '월', '화', '수', '목', '금', '토'][today.getDay()]})`;
-
-  // 현재 선택된 탭 기준 카운트
-  const currentTodos = activeGoalID === 'all'
-    ? todos
-    : todos.filter(todo => todo.goalID === activeGoalID);
-  const completedCount = currentTodos.filter(todo => todo.completed).length;
-  const remainingCount = currentTodos.length - completedCount;
-
-  const calculateDDay = (targetDateString) => {
-    if (!targetDateString) return null;
-    const currentDate = new Date();
-    currentDate.setHours(0, 0, 0, 0);
-    const targetDate = new Date(targetDateString);
-    targetDate.setHours(0, 0, 0, 0);
-    const diffTime = targetDate.getTime() - currentDate.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    if (diffDays === 0) return 'D-Day';
-    return diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`;
-  };
-
-  const handleDelete = async (id) => {
+  const handleToggle = async (todoId) => {
+    const t = todos.find(x => x.id === todoId);
     try {
-      await axios.delete(`${API_URL}/${id}`);
-      setTodos(prev => prev.filter(todo => todo.id !== id));
-    } catch (error) {
-      alert("삭제 실패");
-    }
+      await axios.patch(`${API_URL}/${todoId}`, { isDone: !t.done }, { headers: getAuthHeaders() });
+      setTodos(p => p.map(x => x.id === todoId ? { ...x, done: !x.done } : x));
+    } catch { console.error('상태 변경 실패'); }
   };
 
-  const handleToggle = async (id) => {
-    const targetTodo = todos.find(todo => todo.id === id);
+  const handleDelete = async (todoId) => {
     try {
-      await axios.patch(`${API_URL}/${id}`, {
-        isDone: !targetTodo.completed
-      });
-      setTodos(prev => prev.map(todo =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo
-      ));
-    } catch (error) {
-      console.error("상태 변경 실패");
-    }
+      await axios.delete(`${API_URL}/${todoId}`, { headers: getAuthHeaders() });
+      setTodos(p => p.filter(x => x.id !== todoId));
+    } catch { alert('삭제 실패'); }
   };
 
-  const handleUpdate = async (id, newContent, newDate) => {
-    try {
-      await axios.patch(`${API_URL}/${id}`, {
-        content: newContent,
-        targetDate: newDate || ""
-      });
-      setTodos(prev => prev.map(todo =>
-        todo.id === id ? { ...todo, text: newContent, targetDate: newDate || "" } : todo
-      ));
-    } catch (error) {
-      alert("수정 실패");
-    }
-  };
-
-  const getTargetGoalID = () => {
-    if (activeGoalID !== 'all') return activeGoalID;
-    return addGoalID;
-  };
-
-  const handleAddTodo = async () => {
-    if (!inputValue.trim()) return;
-
-    const targetGoalID = getTargetGoalID();
-
-    if (!targetGoalID) {
-      alert("대목표를 선택해주세요.");
-      return;
-    }
-
-    const targetGoalName = goalMap[targetGoalID] || "";
-    console.log("추가 대상 goalID:", targetGoalID, "goalName:", targetGoalName, "activeGoalID:", activeGoalID);
-
+  const handleAdd = async (goalID) => {
+    const text = (newText[goalID] || '').trim();
+    if (!text) return;
+    const goalName = goals.find(g => g.id === goalID)?.goalName || '';
     try {
       const response = await axios.post(API_URL, {
-        content: inputValue,
-        targetDate: dueDate,
-        goalID: targetGoalID,
-        goalName: targetGoalName,
-        userID: CURRENT_USER_ID
-      });
+        content: text, targetDate: '', goalID, goalName, userID: CURRENT_USER_ID
+      }, { headers: getAuthHeaders() });
       if (response.data.success) {
         fetchTodos();
-        fetchGoals();
-        setInputValue('');
-        setDueDate('');
-        setAddGoalID('');
+        setNewText(p => ({ ...p, [goalID]: '' }));
+        setAdding(null);
       }
-    } catch (error) {
-      alert("저장 실패");
-    }
+    } catch { alert('저장 실패'); }
   };
 
-  // 현재 선택된 목표의 할 일만 필터링
-  const filteredTodos = activeGoalID === 'all'
-    ? todos
-    : todos.filter(todo => todo.goalID === activeGoalID);
-
-  const sortedTodos = [...filteredTodos].sort((a, b) => {
-    if (a.completed !== b.completed) return a.completed ? 1 : -1;
-    if (!a.targetDate) return 1;
-    if (!b.targetDate) return -1;
-    return new Date(a.targetDate) - new Date(b.targetDate);
-  });
-
-  const handleSelect = (id) => {
-    setSelectedIDs(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const handleSelectAll = () => {
-    if (selectedIDs.size === sortedTodos.length) {
-      setSelectedIDs(new Set());
-    } else {
-      setSelectedIDs(new Set(sortedTodos.map(t => t.id)));
-    }
-  };
-
-  const handleBulkDelete = async () => {
-    if (selectedIDs.size === 0) return;
-    if (!window.confirm(`${selectedIDs.size}개의 할 일을 삭제하시겠습니까?`)) return;
-    try {
-      await Promise.all([...selectedIDs].map(id => axios.delete(`${API_URL}/${id}`)));
-      setTodos(prev => prev.filter(todo => !selectedIDs.has(todo.id)));
-      setSelectedIDs(new Set());
-      setSelectMode(false);
-    } catch (error) {
-      alert("일부 삭제에 실패했습니다.");
-    }
-  };
+  const activeGoals = goals.filter(g => todos.some(t => t.goalID === g.id));
+  const doneCount = todos.filter(t => t.done).length;
+  const pct = todos.length ? Math.round((doneCount / todos.length) * 100) : 0;
+  const jelly = JELLY_COLORS[selColor];
+  const userName = localStorage.getItem('userName') || '사용자';
 
   return (
-    <div style={{ backgroundColor: '#FBFAF9', minHeight: '100vh', width: '100%', padding: '60px 8%', boxSizing: 'border-box' }}>
+    <div style={{ minHeight: '100vh', paddingTop: '56px', background: PAGE_BG }}>
+      <div style={{ maxWidth: '768px', margin: '0 auto', padding: '24px 16px 48px' }}>
 
-      <div style={{ textAlign: 'left', marginBottom: '20px' }}>
-        <button onClick={() => navigate('/')} style={{ padding: '10px 15px', borderRadius: '8px', border: 'none', backgroundColor: '#eee', cursor: 'pointer' }}>홈으로</button>
-      </div>
+        {/* Character + Goal Card */}
+        <Card>
+          <div style={{ padding: '20px' }}>
+            {/* Character row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '16px' }}>
+              <div style={{
+                flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 96, height: 108, borderRadius: '50%',
+                background: `radial-gradient(circle,${jelly.glow}22,transparent 70%)`
+              }}>
+                <Jelly bellColor={jelly.bell} glowColor={jelly.glow} accessory={ACCESSORIES[selAcc]} size={1.25} float />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <div>
+                    <p style={{ fontSize: '11px', fontWeight: 600, marginBottom: '2px', color: C.muted, fontFamily: "'Nunito', sans-serif" }}>
+                      {userName}의 해파리 🪼
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 800, color: C.ocean, fontFamily: "'Nunito', sans-serif" }}>Lv. {Math.max(1, Math.floor(doneCount / 3))}</span>
+                      <div style={{ width: 112, height: 8, borderRadius: 999, overflow: 'hidden', background: '#E0F7FF' }}>
+                        <div style={{ height: '100%', borderRadius: 999, background: GRAD, width: `${Math.min(100, pct)}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                  <button onClick={() => setEditMode(v => !v)} style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    padding: '6px 14px', borderRadius: '12px', fontSize: '12px',
+                    fontWeight: 700, border: '2px solid', cursor: 'pointer',
+                    fontFamily: "'Nunito', sans-serif", transition: 'all 0.2s',
+                    ...(editMode
+                      ? { background: GRAD, color: '#fff', borderColor: 'transparent' }
+                      : { background: '#F0FBFF', color: C.ocean, borderColor: C.border })
+                  }}>
+                    <Pencil size={11} />{editMode ? '완료' : '꾸미기'}
+                  </button>
+                </div>
 
-      <div style={{ marginBottom: '40px' }}>
-        <p style={{ color: '#bbb', fontWeight: '600' }}>{formattedDate}</p>
-        <h1 style={{ fontSize: '48px', fontWeight: '800' }}>To-Do</h1>
-        <p style={{ color: '#999', fontSize: '18px' }}>{remainingCount}개 남음 · {completedCount}개 완료</p>
-      </div>
+                {editMode && (
+                  <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: `1px solid ${C.border}` }}>
+                    <p style={{ fontSize: '10px', fontWeight: 700, marginBottom: '6px', color: C.muted, fontFamily: "'Nunito', sans-serif" }}>색깔</p>
+                    <div style={{ display: 'flex', gap: '6px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                      {JELLY_COLORS.map((j, i) => (
+                        <button key={i} onClick={() => setSelColor(i)} style={{
+                          width: 24, height: 24, borderRadius: '8px', cursor: 'pointer',
+                          backgroundColor: j.bell,
+                          border: selColor === i ? `3px solid ${j.glow}` : '3px solid transparent',
+                          transform: selColor === i ? 'scale(1.2)' : undefined,
+                          boxShadow: selColor === i ? `0 2px 8px ${j.glow}55` : undefined
+                        }} />
+                      ))}
+                    </div>
+                    <p style={{ fontSize: '10px', fontWeight: 700, marginBottom: '6px', color: C.muted, fontFamily: "'Nunito', sans-serif" }}>악세사리</p>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      {ACCESSORIES.map((a, i) => (
+                        <button key={i} onClick={() => setSelAcc(i)} style={{
+                          width: 30, height: 30, borderRadius: '8px', fontSize: '14px',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          cursor: 'pointer', transition: 'all 0.2s',
+                          background: selAcc === i ? '#E0F7FF' : '#F8FBFF',
+                          border: selAcc === i ? '2px solid #0EA5E9' : `2px solid ${C.border}`,
+                          transform: selAcc === i ? 'scale(1.12)' : undefined
+                        }}>{a}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
 
-      {/* 대목표 탭 버튼 */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '24px', flexWrap: 'wrap' }}>
-        {/* 전체 탭 */}
-        <button
-          onClick={() => { setActiveGoalID('all'); setSelectMode(false); setSelectedIDs(new Set()); }}
-          style={{
-            padding: '12px 24px',
-            borderRadius: '30px',
-            border: activeGoalID === 'all' ? '2px solid #aa3bff' : '2px solid #eee',
-            backgroundColor: activeGoalID === 'all' ? '#aa3bff' : 'white',
-            color: activeGoalID === 'all' ? 'white' : '#555',
-            fontSize: '15px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
-        >
-          전체
-        </button>
-        {goalTabs.map(g => {
-          const isActive = activeGoalID === g.id;
-          const gTodos = todos.filter(t => t.goalID === g.id);
-          const gDone = gTodos.filter(t => t.completed).length;
-          const gRemain = gTodos.length - gDone;
-          return (
-            <button
-              key={g.id}
-              onClick={() => { console.log("탭 클릭:", g.id, g.name); setActiveGoalID(g.id); setSelectMode(false); setSelectedIDs(new Set()); }}
-              style={{
-                padding: '12px 24px',
-                borderRadius: '30px',
-                border: isActive ? '2px solid #aa3bff' : '2px solid #eee',
-                backgroundColor: isActive ? '#aa3bff' : 'white',
-                color: isActive ? 'white' : '#555',
-                fontSize: '15px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              {g.name}
-              <span style={{ fontSize: '12px', opacity: 0.8 }}>({gRemain}/{gTodos.length})</span>
-            </button>
-          );
-        })}
-      </div>
+            {/* Divider */}
+            <div style={{ borderTop: `1px solid ${C.border}`, marginBottom: '16px' }} />
 
-      {/* 할 일 추가 영역 */}
-      <div style={{ display: 'flex', padding: '16px 24px', border: '2px solid #ddd', borderRadius: '16px', backgroundColor: 'white', gap: '10px', marginBottom: '30px', alignItems: 'center' }}>
-        {activeGoalID === 'all' && goalTabs.length > 0 && (
-          <select
-            value={addGoalID}
-            onChange={(e) => setAddGoalID(e.target.value)}
-            style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '8px 10px', fontSize: '14px', color: '#555' }}
-          >
-            <option value="">대목표 선택</option>
-            {goalTabs.map(g => (
-              <option key={g.id} value={g.id}>{g.name}</option>
-            ))}
-          </select>
-        )}
-        <input
-          type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleAddTodo()}
-          placeholder="할 일을 입력하세요"
-          style={{ border: 'none', outline: 'none', flexGrow: 1, fontSize: '15px' }}
-        />
-        <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={{ border: 'none' }} />
-        <button onClick={handleAddTodo} style={{ borderRadius: '50%', width: '30px', height: '30px', border: 'none', backgroundColor: '#aa3bff', color: 'white', cursor: 'pointer', fontWeight: '700', fontSize: '16px' }}>+</button>
-      </div>
+            {/* Goal + Progress */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: '11px', fontWeight: 600, marginBottom: '4px', color: C.muted, fontFamily: "'Nunito', sans-serif", display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Target size={11} /> 현재 목표
+                </p>
+                <h2 style={{ fontSize: '20px', fontWeight: 800, lineHeight: 1.3, marginBottom: '8px', color: C.deep, fontFamily: "'Nunito', sans-serif" }}>
+                  🎯 {activeGoals.length > 0 ? activeGoals[0].goalName : '목표를 설정해보세요'}
+                </h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ flex: 1, height: 10, borderRadius: 999, overflow: 'hidden', background: '#E0F7FF' }}>
+                    <div style={{ height: '100%', borderRadius: 999, background: GRAD, width: `${pct}%`, transition: 'width 0.5s' }} />
+                  </div>
+                  <span style={{ fontSize: '14px', fontWeight: 800, flexShrink: 0, color: C.ocean, fontFamily: "'Nunito', sans-serif" }}>
+                    {doneCount}/{todos.length} · {pct}%
+                  </span>
+                </div>
+              </div>
+              <button onClick={() => navigate('/make')} style={{
+                flexShrink: 0, display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '8px 14px', fontSize: '14px', fontWeight: 700,
+                borderRadius: '16px', border: `2px solid ${C.border}`,
+                background: '#F0FBFF', color: C.ocean, cursor: 'pointer',
+                fontFamily: "'Nunito', sans-serif"
+              }}>
+                <Plus size={13} />추가
+              </button>
+            </div>
+          </div>
+        </Card>
 
-      {/* 선택 삭제 버튼 (할 일 목록 바로 위, 오른쪽 정렬) */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '12px', justifyContent: 'flex-end' }}>
-        <button
-          onClick={() => { setSelectMode(!selectMode); setSelectedIDs(new Set()); }}
-          style={{
-            padding: '6px 14px',
-            borderRadius: '8px',
-            border: selectMode ? '2px solid #e74c3c' : '1px solid #ddd',
-            backgroundColor: selectMode ? '#fdf0ef' : 'white',
-            color: selectMode ? '#e74c3c' : '#999',
-            fontSize: '13px',
-            fontWeight: '600',
-            cursor: 'pointer'
-          }}
-        >
-          {selectMode ? '선택 취소' : '선택 삭제'}
-        </button>
-        {selectMode && (
-          <>
-            <button
-              onClick={handleSelectAll}
-              style={{ padding: '6px 14px', borderRadius: '8px', border: '1px solid #ddd', backgroundColor: 'white', color: '#555', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
-            >
-              {selectedIDs.size === sortedTodos.length ? '전체 해제' : '전체 선택'}
-            </button>
-            <button
-              onClick={handleBulkDelete}
-              disabled={selectedIDs.size === 0}
-              style={{
-                padding: '6px 14px',
-                borderRadius: '8px',
-                border: 'none',
-                backgroundColor: selectedIDs.size > 0 ? '#e74c3c' : '#ccc',
-                color: 'white',
-                fontSize: '13px',
-                fontWeight: '600',
-                cursor: selectedIDs.size > 0 ? 'pointer' : 'default'
-              }}
-            >
-              {selectedIDs.size}개 삭제
-            </button>
-          </>
-        )}
-      </div>
+        {/* Sub-goals todo list */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '16px' }}>
+          {activeGoals.length === 0 && (
+            <Card>
+              <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+                <div style={{ fontSize: '48px', marginBottom: '12px' }}>🪼</div>
+                <p style={{ fontSize: '14px', fontWeight: 700, color: C.subtle, fontFamily: "'Nunito', sans-serif" }}>
+                  아직 목표가 없어요
+                </p>
+                <p style={{ fontSize: '12px', color: C.subtle, fontFamily: "'Nunito', sans-serif", marginTop: '4px' }}>
+                  위의 추가 버튼으로 첫 목표를 설정해봐요!
+                </p>
+              </div>
+            </Card>
+          )}
 
-      {/* 선택된 목표의 세부 할 일 목록 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-        {sortedTodos.length > 0 ? (
-          sortedTodos.map((todo) => (
-            <TodoItem
-              key={todo.id}
-              {...todo}
-              dDay={calculateDDay(todo.targetDate)}
-              onDelete={handleDelete}
-              onToggle={handleToggle}
-              onUpdate={handleUpdate}
-              selectMode={selectMode}
-              isSelected={selectedIDs.has(todo.id)}
-              onSelect={handleSelect}
-            />
-          ))
-        ) : (
-          <p style={{ color: '#aaa' }}>아직 할 일이 없습니다. 목표를 생성해 보세요!</p>
-        )}
+          {activeGoals.map((goal, gi) => {
+            const items = todos.filter(t => t.goalID === goal.id);
+            const goalDone = items.filter(t => t.done).length;
+            const isOpen = open.has(goal.id);
+            const isAdd = adding === goal.id;
+            const color = SUB_COLORS[gi % SUB_COLORS.length];
+
+            return (
+              <Card key={goal.id}>
+                {/* Header */}
+                <button onClick={() => toggleOpen(goal.id)} style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
+                  padding: '14px 16px', background: 'none', border: 'none',
+                  cursor: 'pointer', textAlign: 'left', transition: 'background 0.2s'
+                }}>
+                  <div style={{ width: 12, height: 12, borderRadius: '50%', flexShrink: 0, backgroundColor: color }} />
+                  <span style={{ fontWeight: 700, flex: 1, fontSize: '14px', color: C.deep, fontFamily: "'Nunito', sans-serif" }}>
+                    {goal.goalName || goal.id}
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ display: 'flex', gap: '2px' }}>
+                      {Array.from({ length: Math.max(items.length, 1) }).map((_, i) => (
+                        <div key={i} style={{
+                          width: 6, height: 16, borderRadius: 999,
+                          backgroundColor: i < goalDone ? color : '#E0F7FF'
+                        }} />
+                      ))}
+                    </div>
+                    <span style={{ fontSize: '12px', fontWeight: 700, width: 40, textAlign: 'right', color, fontFamily: "'Nunito', sans-serif" }}>
+                      {goalDone}/{items.length}
+                    </span>
+                  </div>
+                  {isOpen
+                    ? <ChevronDown size={15} style={{ color: C.subtle, flexShrink: 0 }} />
+                    : <ChevronRight size={15} style={{ color: C.subtle, flexShrink: 0 }} />}
+                </button>
+
+                {/* Todo items */}
+                {isOpen && (
+                  <div style={{ borderTop: `1px solid ${C.border}`, padding: '8px 12px' }}>
+                    {items.length === 0 && !isAdd && (
+                      <p style={{ fontSize: '12px', padding: '8px', textAlign: 'center', color: C.subtle, fontFamily: "'Nunito', sans-serif" }}>
+                        아직 할 일이 없어요 · 아래 버튼으로 추가해보세요
+                      </p>
+                    )}
+
+                    {items.map(todo => (
+                      <div key={todo.id} style={{
+                        display: 'flex', alignItems: 'center', gap: '12px',
+                        padding: '8px', borderRadius: '12px', transition: 'background 0.2s'
+                      }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(224,247,255,0.3)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <button onClick={() => handleToggle(todo.id)} style={{
+                          width: 20, height: 20, borderRadius: '8px',
+                          border: '2px solid', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0, cursor: 'pointer', transition: 'all 0.2s',
+                          ...(todo.done
+                            ? { background: color, borderColor: color }
+                            : { background: 'transparent', borderColor: C.subtle })
+                        }}>
+                          {todo.done && <Check size={10} color="#fff" strokeWidth={3} />}
+                        </button>
+                        <span style={{
+                          fontSize: '14px', flex: 1,
+                          textDecoration: todo.done ? 'line-through' : 'none',
+                          color: todo.done ? C.subtle : C.deep,
+                          fontFamily: "'Nunito', sans-serif",
+                          fontWeight: todo.done ? 400 : 600
+                        }}>
+                          {todo.text}
+                        </span>
+                        <button onClick={() => handleDelete(todo.id)} style={{
+                          padding: '4px', borderRadius: '8px', border: 'none',
+                          background: 'transparent', cursor: 'pointer',
+                          color: '#FCA5A5', opacity: 0, transition: 'opacity 0.2s'
+                        }}
+                          onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                          onMouseLeave={(e) => e.currentTarget.style.opacity = 0}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+
+                    {isAdd ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px' }}>
+                        <div style={{ width: 20, height: 20, borderRadius: '8px', border: `2px dashed ${color}66`, flexShrink: 0 }} />
+                        <input
+                          autoFocus
+                          type="text"
+                          value={newText[goal.id] || ''}
+                          onChange={(e) => setNewText(p => ({ ...p, [goal.id]: e.target.value }))}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(goal.id); if (e.key === 'Escape') setAdding(null); }}
+                          placeholder="할 일 입력 후 Enter"
+                          style={{
+                            flex: 1, fontSize: '14px', background: 'transparent',
+                            outline: 'none', border: 'none',
+                            color: C.deep, fontFamily: "'Nunito', sans-serif"
+                          }}
+                        />
+                        <button onClick={() => handleAdd(goal.id)} style={{
+                          fontSize: '12px', fontWeight: 700, padding: '6px 12px',
+                          borderRadius: '12px', border: 'none', cursor: 'pointer',
+                          color: '#fff', background: color, fontFamily: "'Nunito', sans-serif"
+                        }}>추가</button>
+                        <button onClick={() => setAdding(null)} style={{
+                          fontSize: '12px', fontWeight: 700, background: 'none',
+                          border: 'none', cursor: 'pointer', color: C.muted
+                        }}>취소</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setAdding(goal.id)} style={{
+                        display: 'flex', alignItems: 'center', gap: '6px',
+                        width: '100%', padding: '8px', fontSize: '12px',
+                        fontWeight: 700, borderRadius: '12px', border: 'none',
+                        background: 'transparent', cursor: 'pointer',
+                        color, fontFamily: "'Nunito', sans-serif",
+                        transition: 'background 0.2s'
+                      }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(224,247,255,0.3)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <Plus size={13} />할 일 추가
+                      </button>
+                    )}
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
