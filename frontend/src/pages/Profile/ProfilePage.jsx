@@ -1,36 +1,31 @@
 import { useState, useEffect } from 'react';
-import { Trophy, Flame, Check, Star, Camera, X, Pencil, Save } from 'lucide-react';
-import Jelly from '../Auth/components/Jelly';
+import { Trophy, Flame, Check, Camera, X, Pencil, Save } from 'lucide-react';
+import Jelly, { JELLY_IMAGES } from '../Auth/components/Jelly';
 import Bubbles from '../Auth/components/Bubbles';
 import Card from '../Auth/components/Card';
 import PrimaryBtn from '../Auth/components/PrimaryBtn';
 import { C, GRAD, PAGE_BG } from '../Auth/components/tokens';
 
 const JELLY_COLORS = [
-  { bell: '#BAE6FD', glow: '#38BDF8', name: '스카이' },
-  { bell: '#F9A8D4', glow: '#F472B6', name: '핑크' },
-  { bell: '#C4B5FD', glow: '#A78BFA', name: '라벤더' },
-  { bell: '#99F6E4', glow: '#2DD4BF', name: '민트' },
-  { bell: '#FDE68A', glow: '#FBBF24', name: '선샤인' },
-  { bell: '#FCA5A5', glow: '#F87171', name: '코럴' },
-  { bell: '#D9F99D', glow: '#A3E635', name: '라임' },
-  { bell: '#E0E7FF', glow: '#818CF8', name: '퍼플' },
+  { name: '하늘', preview: '#BAE6FD' },
+  { name: '핑크', preview: '#F9A8D4' },
+  { name: '민트', preview: '#99F6E4' },
+  { name: '선샤인', preview: '#FDE68A' },
+  { name: '보라', preview: '#C4B5FD' },
+  { name: '그레이', preview: '#D1D5DB' },
 ];
-const ACCESSORIES = ['🎀', '👑', '🌸', '⭐', '🐚', '🪸', '🌊', '✨'];
 
 const FRIEND_CHARS = [
-  { name: '김채민', bellColor: '#F9A8D4', glowColor: '#F472B6' },
-  { name: '박민서', bellColor: '#C4B5FD', glowColor: '#A78BFA' },
-  { name: '오하민', bellColor: '#99F6E4', glowColor: '#2DD4BF' },
-  { name: '이준호', bellColor: '#FDE68A', glowColor: '#FBBF24' },
+  { name: '김채민', colorIndex: 1 },
+  { name: '박민서', colorIndex: 4 },
+  { name: '오하민', colorIndex: 2 },
+  { name: '이준호', colorIndex: 3 },
 ];
 const FRAMES = ['🪼', '🌊', '🐚', '✨', '🌸', '🐠'];
 
 function ProfilePage() {
   const savedColor = parseInt(localStorage.getItem('jellyColor') || '0', 10);
-  const savedAcc = parseInt(localStorage.getItem('jellyAcc') || '0', 10);
   const [selColor, setSelColor] = useState(savedColor);
-  const [selAcc, setSelAcc] = useState(savedAcc);
   const [customSaved, setCustomSaved] = useState(true);
   const [tab, setTab] = useState('stat');
   const [photoBooth, setPhotoBooth] = useState(false);
@@ -38,14 +33,13 @@ function ProfilePage() {
   const [selFrame, setSelFrame] = useState(0);
   const [flash, setFlash] = useState(false);
   const [photos, setPhotos] = useState([
-    { id: 1, meColorIdx: 0, meAcc: '🎀', friendIdx: 0, frame: '🪼', date: '2026.06.28' },
-    { id: 2, meColorIdx: 2, meAcc: '⭐', friendIdx: 2, frame: '🌊', date: '2026.07.01' },
+    { id: 1, meColorIdx: 0, friendIdx: 0, frame: '🪼', date: '2026.06.28' },
+    { id: 2, meColorIdx: 2, friendIdx: 2, frame: '🌊', date: '2026.07.01' },
   ]);
 
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
 
-  const jelly = JELLY_COLORS[selColor];
   const [userName, setUserName] = useState(localStorage.getItem('userName') || '사용자');
   const userEmail = localStorage.getItem('userEmail') || '';
 
@@ -66,7 +60,7 @@ function ProfilePage() {
     setFlash(true);
     setTimeout(() => {
       setPhotos(p => [{
-        id: Date.now(), meColorIdx: selColor, meAcc: ACCESSORIES[selAcc],
+        id: Date.now(), meColorIdx: selColor,
         friendIdx: selFriend, frame: FRAMES[selFrame],
         date: new Date().toLocaleDateString('ko-KR').replace(/\. /g, '.'),
       }, ...p]);
@@ -78,16 +72,6 @@ function ProfilePage() {
     { label: '달성한 목표', value: '3개', icon: <Trophy size={18} />, color: '#F59E0B', bg: '#FEF3C7' },
     { label: '연속 달성일', value: '12일', icon: <Flame size={18} />, color: '#EF4444', bg: '#FFE4E6' },
     { label: '완료한 할 일', value: '47개', icon: <Check size={18} />, color: '#10B981', bg: '#D1FAE5' },
-    { label: '획득한 배지', value: '5개', icon: <Star size={18} />, color: '#8B5CF6', bg: '#EDE9FE' },
-  ];
-
-  const badges = [
-    { emoji: '🌱', name: '첫 목표', desc: '첫 번째 목표 설정', locked: false },
-    { emoji: '🔥', name: '7일 연속', desc: '7일 연속 달성', locked: false },
-    { emoji: '🎯', name: '완벽한 하루', desc: '할 일 100% 완료', locked: false },
-    { emoji: '🪼', name: '소셜 스타', desc: '첫 소셜 방 참여', locked: false },
-    { emoji: '⚡', name: '스피드 러너', desc: '달성 속도 상위 10%', locked: false },
-    { emoji: '🔒', name: '???', desc: '아직 잠긴 배지', locked: true },
   ];
 
   return (
@@ -122,11 +106,11 @@ function ProfilePage() {
               <div style={{ position: 'absolute', top: 8, left: 10, fontSize: 24, opacity: 0.4 }}>{FRAMES[selFrame]}</div>
               <div style={{ position: 'absolute', top: 8, right: 10, fontSize: 24, opacity: 0.4 }}>{FRAMES[selFrame]}</div>
               {[
-                { jc: JELLY_COLORS[selColor], acc: ACCESSORIES[selAcc], name: '나' },
-                { jc: { bell: FRIEND_CHARS[selFriend].bellColor, glow: FRIEND_CHARS[selFriend].glowColor }, acc: '🌸', name: FRIEND_CHARS[selFriend].name },
+                { ci: selColor, name: '나' },
+                { ci: FRIEND_CHARS[selFriend].colorIndex, name: FRIEND_CHARS[selFriend].name },
               ].map((c, i) => (
                 <div key={i} style={{ textAlign: 'center', zIndex: 10, paddingBottom: 12 }}>
-                  <Jelly bellColor={c.jc.bell} glowColor={c.jc.glow} accessory={c.acc} size={0.82} float />
+                  <Jelly colorIndex={c.ci} size={0.82} float />
                   <p style={{ fontSize: '10px', fontWeight: 700, marginTop: 4, color: C.ocean, fontFamily: "'Nunito', sans-serif" }}>{c.name}</p>
                 </div>
               ))}
@@ -167,9 +151,9 @@ function ProfilePage() {
           {/* Left: Character */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <Card>
-              <div style={{ padding: '24px', textAlign: 'center', background: `linear-gradient(180deg,${jelly.glow}12,rgba(255,255,255,0.9) 55%)`, borderRadius: '24px' }}>
+              <div style={{ padding: '24px', textAlign: 'center', background: `linear-gradient(180deg,${JELLY_COLORS[selColor]?.preview || '#BAE6FD'}12,rgba(255,255,255,0.9) 55%)`, borderRadius: '24px' }}>
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
-                  <Jelly bellColor={jelly.bell} glowColor={jelly.glow} accessory={ACCESSORIES[selAcc]} size={1.3} float />
+                  <Jelly colorIndex={selColor} size={1.3} float />
                 </div>
                 {editingName ? (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '2px' }}>
@@ -225,37 +209,26 @@ function ProfilePage() {
             <Card>
               <div style={{ padding: '16px' }}>
                 <p style={{ fontSize: '14px', fontWeight: 800, marginBottom: '12px', color: C.deep, fontFamily: "'Nunito', sans-serif" }}>꾸미기</p>
-                <p style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px', color: C.muted, fontFamily: "'Nunito', sans-serif" }}>색깔</p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '16px' }}>
+                <p style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px', color: C.muted, fontFamily: "'Nunito', sans-serif" }}>해파리 선택</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                   {JELLY_COLORS.map((j, i) => (
                     <button key={i} onClick={() => { setSelColor(i); setCustomSaved(false); }} style={{
-                      aspectRatio: '1', borderRadius: '16px', cursor: 'pointer',
-                      backgroundColor: j.bell, transition: 'all 0.2s', position: 'relative',
-                      border: selColor === i ? `3px solid ${j.glow}` : '3px solid transparent',
-                      transform: selColor === i ? 'scale(1.15)' : undefined,
-                      boxShadow: selColor === i ? `0 4px 12px ${j.glow}55` : undefined
+                      padding: '8px', borderRadius: '16px', cursor: 'pointer',
+                      transition: 'all 0.2s', position: 'relative',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+                      background: selColor === i ? '#E0F7FF' : '#F8FAFC',
+                      border: selColor === i ? '3px solid #0EA5E9' : '3px solid transparent',
+                      transform: selColor === i ? 'scale(1.05)' : undefined,
+                      boxShadow: selColor === i ? '0 4px 12px rgba(14,165,233,0.2)' : undefined
                     }}>
-                      {selColor === i && <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={10} color="#fff" strokeWidth={3} /></div>}
+                      <img src={JELLY_IMAGES[i]} alt={j.name} style={{ width: 48, height: 'auto' }} />
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: selColor === i ? C.ocean : C.muted, fontFamily: "'Nunito', sans-serif" }}>{j.name}</span>
                     </button>
-                  ))}
-                </div>
-                <p style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px', color: C.muted, fontFamily: "'Nunito', sans-serif" }}>악세사리</p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
-                  {ACCESSORIES.map((a, i) => (
-                    <button key={i} onClick={() => { setSelAcc(i); setCustomSaved(false); }} style={{
-                      aspectRatio: '1', borderRadius: '12px', fontSize: '20px',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: 'pointer', transition: 'all 0.2s',
-                      background: selAcc === i ? '#E0F7FF' : '#F8FAFC',
-                      border: selAcc === i ? '2px solid #0EA5E9' : `2px solid ${C.border}`,
-                      transform: selAcc === i ? 'scale(1.12)' : undefined
-                    }}>{a}</button>
                   ))}
                 </div>
                 <button
                   onClick={() => {
                     localStorage.setItem('jellyColor', String(selColor));
-                    localStorage.setItem('jellyAcc', String(selAcc));
                     setCustomSaved(true);
                   }}
                   style={{
@@ -282,7 +255,7 @@ function ProfilePage() {
               display: 'flex', padding: '4px', borderRadius: '16px', gap: '4px',
               background: 'rgba(255,255,255,0.7)', border: `1px solid ${C.border}`
             }}>
-              {[{ key: 'stat', label: '통계 & 배지' }, { key: 'photo', label: '📸 사진첩' }].map(t => (
+              {[{ key: 'stat', label: '통계' }, { key: 'photo', label: '📸 사진첩' }].map(t => (
                 <button key={t.key} onClick={() => setTab(t.key)} style={{
                   flex: 1, padding: '8px', fontSize: '14px', fontWeight: 700,
                   borderRadius: '12px', border: 'none', cursor: 'pointer',
@@ -309,25 +282,6 @@ function ProfilePage() {
                     </div>
                   ))}
                 </div>
-                <Card>
-                  <div style={{ padding: '20px' }}>
-                    <p style={{ fontWeight: 800, marginBottom: '16px', color: C.deep, fontFamily: "'Nunito', sans-serif" }}>획득한 배지</p>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-                      {badges.map((b, i) => (
-                        <div key={i} style={{
-                          borderRadius: '16px', padding: '12px', textAlign: 'center',
-                          opacity: b.locked ? 0.4 : 1,
-                          background: b.locked ? '#F8FAFC' : '#EFF8FF',
-                          border: b.locked ? `2px dashed ${C.border}` : `2px solid ${C.border}`
-                        }}>
-                          <div style={{ fontSize: '24px', marginBottom: '6px' }}>{b.emoji}</div>
-                          <p style={{ fontSize: '12px', fontWeight: 800, marginBottom: '2px', color: C.deep, fontFamily: "'Nunito', sans-serif" }}>{b.name}</p>
-                          <p style={{ fontSize: '10px', lineHeight: 1.3, color: C.muted, fontFamily: "'Nunito', sans-serif" }}>{b.desc}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </Card>
               </>
             )}
 
@@ -355,11 +309,11 @@ function ProfilePage() {
                           <div style={{ position: 'absolute', top: 8, right: 8, fontSize: 18, opacity: 0.35 }}>{p.frame}</div>
                           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 20, paddingTop: 24, paddingBottom: 12, paddingLeft: 12, paddingRight: 12 }}>
                             {[
-                              { jc: JELLY_COLORS[p.meColorIdx], acc: p.meAcc, name: '나' },
-                              { jc: { bell: FRIEND_CHARS[p.friendIdx].bellColor, glow: FRIEND_CHARS[p.friendIdx].glowColor }, acc: '🌸', name: FRIEND_CHARS[p.friendIdx].name },
+                              { ci: p.meColorIdx, name: '나' },
+                              { ci: FRIEND_CHARS[p.friendIdx].colorIndex, name: FRIEND_CHARS[p.friendIdx].name },
                             ].map((c, i) => (
                               <div key={i} style={{ textAlign: 'center' }}>
-                                <Jelly bellColor={c.jc.bell} glowColor={c.jc.glow} accessory={c.acc} size={0.62} float />
+                                <Jelly colorIndex={c.ci} size={0.62} float />
                                 <p style={{ fontSize: '9px', fontWeight: 700, marginTop: 2, color: C.ocean, fontFamily: "'Nunito', sans-serif" }}>{c.name}</p>
                               </div>
                             ))}

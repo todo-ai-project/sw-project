@@ -15,6 +15,7 @@ function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
+  const [pwConfirm, setPwConfirm] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -23,6 +24,10 @@ function SignupPage() {
     if (!name.trim() || !email.trim() || !pw.trim()) return;
     if (pw.length < 8) {
       setError('비밀번호는 8자 이상이어야 합니다.');
+      return;
+    }
+    if (pw !== pwConfirm) {
+      setError('비밀번호가 일치하지 않습니다.');
       return;
     }
     setLoading(true);
@@ -35,7 +40,7 @@ function SignupPage() {
       await axios.post('http://localhost:5001/api/auth/signup', {
         uid: user.uid,
         email: user.email,
-        name: name,
+        nickname: name,
       });
 
       const idToken = await user.getIdToken();
@@ -66,7 +71,7 @@ function SignupPage() {
     <AuthWrap>
       <div style={{ textAlign: 'center', marginBottom: '32px' }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
-          <Jelly bellColor="#C4B5FD" glowColor="#A78BFA" accessory="🌸" size={1.1} float />
+          <Jelly colorIndex={4} size={1.1} float />
         </div>
         <h1 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '4px', color: C.deep, fontFamily: "'Nunito', sans-serif" }}>
           함께 헤엄쳐봐요! 🪼
@@ -81,6 +86,7 @@ function SignupPage() {
           <Field label="이름" type="text" value={name} onChange={setName} placeholder="이름 입력" />
           <Field label="이메일" type="email" value={email} onChange={setEmail} placeholder="example@email.com" />
           <Field label="비밀번호" type="password" value={pw} onChange={setPw} placeholder="8자 이상" />
+          <Field label="비밀번호 확인" type="password" value={pwConfirm} onChange={setPwConfirm} placeholder="비밀번호 재입력" />
           {error && (
             <p style={{ color: '#F43F5E', fontSize: '13px', margin: 0, fontFamily: "'Nunito', sans-serif" }}>{error}</p>
           )}

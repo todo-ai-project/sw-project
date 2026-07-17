@@ -37,12 +37,16 @@ function SocialPage() {
   };
 
   const toggleJoin = (id) => {
+    const wasJoined = joined.has(id);
     setJoined(p => {
       const n = new Set(p);
-      if (n.has(id)) { n.delete(id); setRooms(r => r.map(x => x.id === id ? { ...x, members: Math.max(0, x.members - 1) } : x)); }
-      else { n.add(id); setRooms(r => r.map(x => x.id === id ? { ...x, members: x.members + 1 } : x)); }
+      wasJoined ? n.delete(id) : n.add(id);
       return n;
     });
+    setRooms(r => r.map(x => x.id === id
+      ? { ...x, members: wasJoined ? Math.max(0, x.members - 1) : x.members + 1 }
+      : x
+    ));
   };
 
   const inputStyle = {
@@ -183,23 +187,6 @@ function SocialPage() {
             );
           })}
 
-          {/* Add card */}
-          <button onClick={() => setShowCreate(true)} style={{
-            borderRadius: '24px', border: `2px dashed #BAE6FD`,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            gap: '12px', minHeight: '220px', background: 'transparent',
-            cursor: 'pointer', transition: 'all 0.2s'
-          }}>
-            <div style={{
-              width: 48, height: 48, borderRadius: '16px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-              border: `2px solid ${C.border}`
-            }}>
-              <Plus size={20} style={{ color: C.ocean }} />
-            </div>
-            <p style={{ fontSize: '14px', fontWeight: 700, color: C.muted, fontFamily: "'Nunito', sans-serif" }}>새 방 만들기</p>
-          </button>
         </div>
       </div>
     </div>

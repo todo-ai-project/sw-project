@@ -74,7 +74,7 @@ function MakeTodo() {
       <div style={{ width: '100%', maxWidth: '448px', position: 'relative', zIndex: 10, animation: 'fadeInUp .4s ease-out' }}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
-            <Jelly bellColor="#BAE6FD" glowColor="#38BDF8" accessory="✏️" size={1} float />
+            <Jelly colorIndex={0} size={1} float />
           </div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '4px', color: C.deep, fontFamily: "'Nunito', sans-serif" }}>
             어떤 목표를 이루고 싶어요?

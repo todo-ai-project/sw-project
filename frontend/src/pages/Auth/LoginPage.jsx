@@ -27,11 +27,18 @@ function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, pw);
       const idToken = await userCredential.user.getIdToken();
 
-      await axios.post('http://localhost:5001/api/auth/login', { idToken });
-
       localStorage.setItem('idToken', idToken);
       localStorage.setItem('userID', userCredential.user.uid);
       localStorage.setItem('userEmail', userCredential.user.email);
+
+      try {
+        const res = await axios.post('http://localhost:5001/api/auth/login', { idToken });
+        if (res.data.nickname) {
+          localStorage.setItem('userName', res.data.nickname);
+        }
+      } catch (backendErr) {
+        console.warn('백엔드 연동 실패 (무시):', backendErr.message);
+      }
 
       navigate('/goals');
     } catch (err) {
@@ -55,7 +62,7 @@ function LoginPage() {
     <AuthWrap>
       <div style={{ textAlign: 'center', marginBottom: '32px' }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
-          <Jelly bellColor="#BAE6FD" glowColor="#38BDF8" accessory="🎀" size={1.1} float />
+          <Jelly colorIndex={0} size={1.1} float />
         </div>
         <h1 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '4px', color: C.deep, fontFamily: "'Nunito', sans-serif" }}>
           다시 오셨군요! 🌊

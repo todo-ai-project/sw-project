@@ -7,17 +7,7 @@ import Card from '../Auth/components/Card';
 import PrimaryBtn from '../Auth/components/PrimaryBtn';
 import { C, GRAD, PAGE_BG } from '../Auth/components/tokens';
 
-const JELLY_COLORS = [
-  { bell: '#BAE6FD', glow: '#38BDF8', name: '스카이' },
-  { bell: '#F9A8D4', glow: '#F472B6', name: '핑크' },
-  { bell: '#C4B5FD', glow: '#A78BFA', name: '라벤더' },
-  { bell: '#99F6E4', glow: '#2DD4BF', name: '민트' },
-  { bell: '#FDE68A', glow: '#FBBF24', name: '선샤인' },
-  { bell: '#FCA5A5', glow: '#F87171', name: '코럴' },
-  { bell: '#D9F99D', glow: '#A3E635', name: '라임' },
-  { bell: '#E0E7FF', glow: '#818CF8', name: '퍼플' },
-];
-const ACCESSORIES = ['🎀', '👑', '🌸', '⭐', '🐚', '🪸', '🌊', '✨'];
+const JELLY_PREVIEW_COLORS = ['#BAE6FD', '#F9A8D4', '#99F6E4', '#FDE68A', '#C4B5FD', '#D1D5DB'];
 const SUB_COLORS = ['#0EA5E9', '#06B6D4', '#10B981', '#F59E0B', '#6366F1', '#C026D3', '#0891B2', '#059669'];
 
 function TodoList() {
@@ -28,8 +18,7 @@ function TodoList() {
   const [newText, setNewText] = useState({});
   const [adding, setAdding] = useState(null);
   const [editMode, setEditMode] = useState(false);
-  const [selColor, setSelColor] = useState(0);
-  const [selAcc, setSelAcc] = useState(0);
+  const [selColor, setSelColor] = useState(parseInt(localStorage.getItem('jellyColor') || '0', 10));
 
   const API_URL = 'http://localhost:5001/api/todos';
   const GOALS_API_URL = 'http://localhost:5001/api/goals';
@@ -113,7 +102,7 @@ function TodoList() {
   const activeGoals = goals.filter(g => todos.some(t => t.goalID === g.id));
   const doneCount = todos.filter(t => t.done).length;
   const pct = todos.length ? Math.round((doneCount / todos.length) * 100) : 0;
-  const jelly = JELLY_COLORS[selColor];
+  const jellyPreview = JELLY_PREVIEW_COLORS[selColor] || JELLY_PREVIEW_COLORS[0];
   const userName = localStorage.getItem('userName') || '사용자';
 
   return (
@@ -128,9 +117,9 @@ function TodoList() {
               <div style={{
                 flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 width: 96, height: 108, borderRadius: '50%',
-                background: `radial-gradient(circle,${jelly.glow}22,transparent 70%)`
+                background: `radial-gradient(circle,${jellyPreview}22,transparent 70%)`
               }}>
-                <Jelly bellColor={jelly.bell} glowColor={jelly.glow} accessory={ACCESSORIES[selAcc]} size={1.25} float />
+                <Jelly colorIndex={selColor} size={1.25} float />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
@@ -160,29 +149,19 @@ function TodoList() {
 
                 {editMode && (
                   <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: `1px solid ${C.border}` }}>
-                    <p style={{ fontSize: '10px', fontWeight: 700, marginBottom: '6px', color: C.muted, fontFamily: "'Nunito', sans-serif" }}>색깔</p>
-                    <div style={{ display: 'flex', gap: '6px', marginBottom: '12px', flexWrap: 'wrap' }}>
-                      {JELLY_COLORS.map((j, i) => (
-                        <button key={i} onClick={() => setSelColor(i)} style={{
-                          width: 24, height: 24, borderRadius: '8px', cursor: 'pointer',
-                          backgroundColor: j.bell,
-                          border: selColor === i ? `3px solid ${j.glow}` : '3px solid transparent',
-                          transform: selColor === i ? 'scale(1.2)' : undefined,
-                          boxShadow: selColor === i ? `0 2px 8px ${j.glow}55` : undefined
-                        }} />
-                      ))}
-                    </div>
-                    <p style={{ fontSize: '10px', fontWeight: 700, marginBottom: '6px', color: C.muted, fontFamily: "'Nunito', sans-serif" }}>악세사리</p>
+                    <p style={{ fontSize: '10px', fontWeight: 700, marginBottom: '6px', color: C.muted, fontFamily: "'Nunito', sans-serif" }}>해파리 선택</p>
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                      {ACCESSORIES.map((a, i) => (
-                        <button key={i} onClick={() => setSelAcc(i)} style={{
-                          width: 30, height: 30, borderRadius: '8px', fontSize: '14px',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          cursor: 'pointer', transition: 'all 0.2s',
-                          background: selAcc === i ? '#E0F7FF' : '#F8FBFF',
-                          border: selAcc === i ? '2px solid #0EA5E9' : `2px solid ${C.border}`,
-                          transform: selAcc === i ? 'scale(1.12)' : undefined
-                        }}>{a}</button>
+                      {JELLY_PREVIEW_COLORS.map((_, i) => (
+                        <button key={i} onClick={() => setSelColor(i)} style={{
+                          width: 36, height: 36, borderRadius: '10px', cursor: 'pointer',
+                          padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: selColor === i ? '#E0F7FF' : '#F8FBFF',
+                          border: selColor === i ? '2px solid #0EA5E9' : `2px solid ${C.border}`,
+                          transform: selColor === i ? 'scale(1.15)' : undefined,
+                          transition: 'all 0.2s',
+                        }}>
+                          <img src={`/jelly/jelly_${['blue','pink','green','yellow','puple','grey'][i]}.png`} alt="" style={{ width: 28, height: 'auto' }} />
+                        </button>
                       ))}
                     </div>
                   </div>

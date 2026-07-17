@@ -38,7 +38,7 @@ function AnalyzePage({ userGoal, isLoading, result, onGoToList, onReset }) {
           <Card>
             <div style={{ padding: '32px', textAlign: 'center' }}>
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
-                <Jelly bellColor="#BAE6FD" glowColor="#38BDF8" accessory="🤖" size={0.9} float />
+                <Jelly colorIndex={0} size={0.9} float />
               </div>
               <p style={{ fontSize: '12px', marginBottom: '4px', color: C.muted, fontFamily: "'Nunito', sans-serif" }}>분석 중</p>
               <p style={{ fontSize: '16px', fontWeight: 700, marginBottom: '24px', color: C.deep, fontFamily: "'Nunito', sans-serif" }}>

@@ -29,7 +29,7 @@ function Navbar() {
       }}>
         <button onClick={() => navigate(isLoggedIn ? '/goals' : '/login')}
           style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', cursor: 'pointer' }}>
-          <span style={{ fontSize: 20, display: 'inline-block', animation: 'jellyFloat 3s ease-in-out infinite' }}>🪼</span>
+          <img src="/jelly/jelly_blue.png" alt="로고" style={{ width: 28, height: 'auto', display: 'inline-block', animation: 'jellyFloat 3s ease-in-out infinite' }} />
           <span style={{ fontSize: '16px', fontWeight: 800, color: C.deep, fontFamily: "'Nunito', sans-serif" }}>투둥실</span>
         </button>
 
@@ -62,7 +62,6 @@ function Navbar() {
               localStorage.removeItem('idToken');
               localStorage.removeItem('userID');
               localStorage.removeItem('userEmail');
-              localStorage.removeItem('userName');
               navigate('/login');
             }} style={{
               display: 'flex', alignItems: 'center', gap: '6px',
