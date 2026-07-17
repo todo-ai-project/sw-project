@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Trophy, Flame, Check, Star, Camera, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Trophy, Flame, Check, Star, Camera, X, Pencil, Save } from 'lucide-react';
 import Jelly from '../Auth/components/Jelly';
 import Bubbles from '../Auth/components/Bubbles';
 import Card from '../Auth/components/Card';
@@ -27,8 +27,11 @@ const FRIEND_CHARS = [
 const FRAMES = ['🪼', '🌊', '🐚', '✨', '🌸', '🐠'];
 
 function ProfilePage() {
-  const [selColor, setSelColor] = useState(0);
-  const [selAcc, setSelAcc] = useState(0);
+  const savedColor = parseInt(localStorage.getItem('jellyColor') || '0', 10);
+  const savedAcc = parseInt(localStorage.getItem('jellyAcc') || '0', 10);
+  const [selColor, setSelColor] = useState(savedColor);
+  const [selAcc, setSelAcc] = useState(savedAcc);
+  const [customSaved, setCustomSaved] = useState(true);
   const [tab, setTab] = useState('stat');
   const [photoBooth, setPhotoBooth] = useState(false);
   const [selFriend, setSelFriend] = useState(0);
@@ -39,9 +42,25 @@ function ProfilePage() {
     { id: 2, meColorIdx: 2, meAcc: '⭐', friendIdx: 2, frame: '🌊', date: '2026.07.01' },
   ]);
 
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+
   const jelly = JELLY_COLORS[selColor];
-  const userName = localStorage.getItem('userName') || '사용자';
+  const [userName, setUserName] = useState(localStorage.getItem('userName') || '사용자');
   const userEmail = localStorage.getItem('userEmail') || '';
+
+  const startEditName = () => {
+    setNameInput(userName);
+    setEditingName(true);
+  };
+  const saveName = () => {
+    const trimmed = nameInput.trim();
+    if (trimmed) {
+      setUserName(trimmed);
+      localStorage.setItem('userName', trimmed);
+    }
+    setEditingName(false);
+  };
 
   const takePhoto = () => {
     setFlash(true);
@@ -152,7 +171,36 @@ function ProfilePage() {
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
                   <Jelly bellColor={jelly.bell} glowColor={jelly.glow} accessory={ACCESSORIES[selAcc]} size={1.3} float />
                 </div>
-                <h2 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '2px', color: C.deep, fontFamily: "'Nunito', sans-serif" }}>{userName}</h2>
+                {editingName ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '2px' }}>
+                    <input
+                      value={nameInput}
+                      onChange={e => setNameInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && saveName()}
+                      autoFocus
+                      style={{
+                        fontSize: '18px', fontWeight: 800, textAlign: 'center', width: '140px',
+                        padding: '4px 8px', borderRadius: '10px', border: `2px solid ${C.ocean}`,
+                        outline: 'none', color: C.deep, fontFamily: "'Nunito', sans-serif",
+                        background: 'rgba(255,255,255,0.8)'
+                      }}
+                    />
+                    <button onClick={saveName} style={{
+                      width: 28, height: 28, borderRadius: '50%', border: 'none',
+                      background: GRAD, color: '#fff', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}><Check size={14} /></button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '2px' }}>
+                    <h2 style={{ fontSize: '20px', fontWeight: 800, color: C.deep, fontFamily: "'Nunito', sans-serif", margin: 0 }}>{userName}</h2>
+                    <button onClick={startEditName} style={{
+                      width: 24, height: 24, borderRadius: '50%', border: 'none',
+                      background: 'rgba(14,165,233,0.1)', color: C.ocean, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}><Pencil size={12} /></button>
+                  </div>
+                )}
                 <p style={{ fontSize: '12px', marginBottom: '16px', color: C.muted, fontFamily: "'Nunito', sans-serif" }}>{userEmail}</p>
                 <div style={{ marginBottom: '20px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px', color: C.muted, fontFamily: "'Nunito', sans-serif" }}>
@@ -180,7 +228,7 @@ function ProfilePage() {
                 <p style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px', color: C.muted, fontFamily: "'Nunito', sans-serif" }}>색깔</p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '16px' }}>
                   {JELLY_COLORS.map((j, i) => (
-                    <button key={i} onClick={() => setSelColor(i)} style={{
+                    <button key={i} onClick={() => { setSelColor(i); setCustomSaved(false); }} style={{
                       aspectRatio: '1', borderRadius: '16px', cursor: 'pointer',
                       backgroundColor: j.bell, transition: 'all 0.2s', position: 'relative',
                       border: selColor === i ? `3px solid ${j.glow}` : '3px solid transparent',
@@ -194,7 +242,7 @@ function ProfilePage() {
                 <p style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px', color: C.muted, fontFamily: "'Nunito', sans-serif" }}>악세사리</p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
                   {ACCESSORIES.map((a, i) => (
-                    <button key={i} onClick={() => setSelAcc(i)} style={{
+                    <button key={i} onClick={() => { setSelAcc(i); setCustomSaved(false); }} style={{
                       aspectRatio: '1', borderRadius: '12px', fontSize: '20px',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       cursor: 'pointer', transition: 'all 0.2s',
@@ -204,6 +252,25 @@ function ProfilePage() {
                     }}>{a}</button>
                   ))}
                 </div>
+                <button
+                  onClick={() => {
+                    localStorage.setItem('jellyColor', String(selColor));
+                    localStorage.setItem('jellyAcc', String(selAcc));
+                    setCustomSaved(true);
+                  }}
+                  style={{
+                    width: '100%', marginTop: '16px', padding: '10px',
+                    fontSize: '14px', fontWeight: 700, borderRadius: '16px',
+                    border: 'none', cursor: 'pointer', fontFamily: "'Nunito', sans-serif",
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                    transition: 'all 0.2s',
+                    ...(customSaved
+                      ? { background: '#E0F7FF', color: C.ocean }
+                      : { background: GRAD, color: '#fff', boxShadow: '0 4px 12px rgba(14,165,233,0.25)' })
+                  }}
+                >
+                  {customSaved ? <><Check size={14} />저장됨</> : <><Save size={14} />꾸미기 저장</>}
+                </button>
               </div>
             </Card>
           </div>

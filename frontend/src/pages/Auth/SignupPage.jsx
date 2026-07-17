@@ -42,6 +42,7 @@ function SignupPage() {
       localStorage.setItem('idToken', idToken);
       localStorage.setItem('userID', user.uid);
       localStorage.setItem('userEmail', user.email);
+      localStorage.setItem('userName', name);
 
       navigate('/goals');
     } catch (err) {

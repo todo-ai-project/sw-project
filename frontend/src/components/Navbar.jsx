@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Target, Users, User } from 'lucide-react';
+import { Target, Users, User, LogOut } from 'lucide-react';
 import { C, GRAD } from '../pages/Auth/components/tokens';
 
 function Navbar() {
@@ -57,6 +57,23 @@ function Navbar() {
                 </button>
               );
             })}
+            <div style={{ width: '1px', height: '20px', background: C.border, margin: '0 2px' }} />
+            <button onClick={() => {
+              localStorage.removeItem('idToken');
+              localStorage.removeItem('userID');
+              localStorage.removeItem('userEmail');
+              localStorage.removeItem('userName');
+              navigate('/login');
+            }} style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '6px 12px', borderRadius: '12px',
+              fontSize: '13px', fontWeight: 700, border: 'none', cursor: 'pointer',
+              background: 'transparent', color: '#F43F5E',
+              fontFamily: "'Nunito', sans-serif", transition: 'all 0.2s'
+            }}>
+              <LogOut size={14} />
+              <span>로그아웃</span>
+            </button>
           </div>
         )}
       </div>

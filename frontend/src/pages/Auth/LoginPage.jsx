@@ -35,13 +35,16 @@ function LoginPage() {
 
       navigate('/goals');
     } catch (err) {
+      console.error('Login error:', err.code, err.message, err);
       const code = err.code;
       if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
         setError('이메일 또는 비밀번호가 올바르지 않습니다.');
       } else if (code === 'auth/invalid-email') {
         setError('유효하지 않은 이메일 형식입니다.');
+      } else if (code === 'auth/configuration-not-found') {
+        setError('Firebase 인증이 설정되지 않았습니다. 관리자에게 문의하세요.');
       } else {
-        setError('로그인에 실패했습니다. 다시 시도해주세요.');
+        setError(`로그인 실패: ${code || err.message}`);
       }
     } finally {
       setLoading(false);
