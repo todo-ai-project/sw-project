@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, PartyPopper } from 'lucide-react';
 import Jelly from '../Auth/components/Jelly';
 import Bubbles from '../Auth/components/Bubbles';
 import Card from '../Auth/components/Card';
@@ -8,7 +8,7 @@ import { C, PAGE_BG } from '../Auth/components/tokens';
 
 const STEPS = ['목표 분석 중...', '세부 목표 생성 중...', '할 일 목록 구성 중...', '마무리 중...'];
 
-function AnalyzePage({ userGoal, isLoading, result, onGoToList, onReset }) {
+function AnalyzePage({ userGoal, isLoading, result, error, onGoToList, onReset }) {
   const [step, setStep] = useState(0);
 
   useEffect(() => {
@@ -16,13 +16,16 @@ function AnalyzePage({ userGoal, isLoading, result, onGoToList, onReset }) {
       const timers = STEPS.map((_, i) => setTimeout(() => setStep(i), i * 900));
       return () => timers.forEach(clearTimeout);
     }
+    return undefined;
   }, [isLoading]);
 
   let displayData = [];
   if (Array.isArray(result)) {
     displayData = result;
+  } else if (result?.todos && Array.isArray(result.todos)) {
+    displayData = result.todos;
   } else if (result && typeof result === 'object') {
-    displayData = Object.values(result).flat().filter(item => typeof item === 'string' || item.content);
+    displayData = Object.values(result).flat().filter(item => typeof item === 'string' || item?.content || item?.title);
   }
 
   return (
@@ -32,8 +35,7 @@ function AnalyzePage({ userGoal, isLoading, result, onGoToList, onReset }) {
       padding: '56px 16px 16px', position: 'relative', background: PAGE_BG
     }}>
       <Bubbles n={5} />
-      <div style={{ width: '100%', maxWidth: '448px', position: 'relative', zIndex: 10, animation: 'fadeInUp .4s ease-out' }}>
-
+      <div style={{ width: '100%', maxWidth: '850px', position: 'relative', zIndex: 10, animation: 'fadeInUp .4s ease-out' }}>
         {isLoading ? (
           <Card>
             <div style={{ padding: '32px', textAlign: 'center' }}>
@@ -60,10 +62,7 @@ function AnalyzePage({ userGoal, isLoading, result, onGoToList, onReset }) {
                         animation: 'spin 1s linear infinite', flexShrink: 0
                       }} />
                     ) : (
-                      <div style={{
-                        width: 16, height: 16, borderRadius: '50%',
-                        border: `2px solid ${C.border}`, flexShrink: 0
-                      }} />
+                      <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${C.border}`, flexShrink: 0 }} />
                     )}
                     <span style={{ fontWeight: i <= step ? 600 : 400 }}>{s}</span>
                   </div>
@@ -71,10 +70,24 @@ function AnalyzePage({ userGoal, isLoading, result, onGoToList, onReset }) {
               </div>
             </div>
           </Card>
+        ) : error ? (
+          <Card>
+            <div style={{ padding: '32px', textAlign: 'center' }}>
+              <div style={{ fontSize: '40px', marginBottom: '12px' }}>🥺</div>
+              <p style={{ color: '#F43F5E', fontWeight: 700, fontFamily: "'Nunito', sans-serif" }}>{error}</p>
+              <button onClick={onReset} style={{
+                marginTop: '16px', padding: '8px 16px', borderRadius: '12px',
+                border: `2px solid ${C.border}`, background: '#fff',
+                color: C.ocean, fontWeight: 700, fontSize: '14px', cursor: 'pointer'
+              }}>
+                다시 입력하기
+              </button>
+            </div>
+          </Card>
         ) : result ? (
           <>
             <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-              <div style={{ fontSize: '48px', marginBottom: '12px' }}>🎉</div>
+              <div style={{ marginBottom: '12px' }}><PartyPopper size={42} color={C.ocean} /></div>
               <h1 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '4px', color: C.deep, fontFamily: "'Nunito', sans-serif" }}>
                 완성됐어요!
               </h1>
@@ -88,10 +101,10 @@ function AnalyzePage({ userGoal, isLoading, result, onGoToList, onReset }) {
                 {displayData.length > 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
                     {displayData.map((item, index) => {
-                      const content = typeof item === 'string' ? item : item.content;
-                      const category = item.category || '액션 플랜';
+                      const content = typeof item === 'string' ? item : item.title || item.content;
+                      const category = item?.category || `세부 목표 ${index + 1}`;
                       return (
-                        <div key={index} style={{
+                        <div key={item?.id || index} style={{
                           display: 'flex', alignItems: 'center', gap: '12px',
                           padding: '10px 12px', borderRadius: '12px',
                           background: '#F0FBFF', transition: 'all 0.2s'
@@ -118,9 +131,7 @@ function AnalyzePage({ userGoal, isLoading, result, onGoToList, onReset }) {
                 )}
 
                 <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <PrimaryBtn onClick={onGoToList}>
-                    내 투두리스트에서 확인하기 🪼
-                  </PrimaryBtn>
+                  <PrimaryBtn onClick={onGoToList}>내 투두리스트에서 확인하기</PrimaryBtn>
                   <button onClick={onReset} style={{
                     width: '100%', padding: '10px', borderRadius: '12px',
                     border: `2px solid ${C.border}`, background: '#fff',
@@ -133,21 +144,7 @@ function AnalyzePage({ userGoal, isLoading, result, onGoToList, onReset }) {
               </div>
             </Card>
           </>
-        ) : (
-          <Card>
-            <div style={{ padding: '32px', textAlign: 'center' }}>
-              <p style={{ color: C.muted, fontFamily: "'Nunito', sans-serif" }}>데이터를 불러올 수 없습니다.</p>
-              <button onClick={onReset} style={{
-                marginTop: '12px', padding: '8px 16px', borderRadius: '12px',
-                border: `2px solid ${C.border}`, background: '#fff',
-                color: C.ocean, fontWeight: 700, fontSize: '14px',
-                cursor: 'pointer', fontFamily: "'Nunito', sans-serif"
-              }}>
-                다시 시도
-              </button>
-            </div>
-          </Card>
-        )}
+        ) : null}
       </div>
     </div>
   );

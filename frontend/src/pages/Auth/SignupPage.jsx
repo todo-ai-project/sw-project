@@ -74,7 +74,7 @@ function SignupPage() {
           <Jelly colorIndex={4} size={1.1} float />
         </div>
         <h1 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '4px', color: C.deep, fontFamily: "'Nunito', sans-serif" }}>
-          함께 헤엄쳐봐요! 🪼
+          함께 헤엄쳐봐요!
         </h1>
         <p style={{ fontSize: '14px', color: C.muted, fontFamily: "'Nunito', sans-serif", margin: 0 }}>
           가입하고 첫 목표를 세워봐요

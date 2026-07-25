@@ -65,7 +65,7 @@ function LoginPage() {
           <Jelly colorIndex={0} size={1.1} float />
         </div>
         <h1 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '4px', color: C.deep, fontFamily: "'Nunito', sans-serif" }}>
-          다시 오셨군요! 🌊
+          다시 오셨군요!
         </h1>
         <p style={{ fontSize: '14px', color: C.muted, fontFamily: "'Nunito', sans-serif", margin: 0 }}>
           오늘도 목표를 향해 둥실둥실~

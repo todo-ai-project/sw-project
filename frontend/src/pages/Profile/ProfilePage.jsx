@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
-import { Trophy, Flame, Check, Camera, X, Pencil, Save } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Camera, Check, Coins, Pencil, Save, ShoppingBag, Sparkles, Trophy, X } from 'lucide-react';
 import Jelly, { JELLY_IMAGES } from '../Auth/components/Jelly';
-import Bubbles from '../Auth/components/Bubbles';
 import Card from '../Auth/components/Card';
 import PrimaryBtn from '../Auth/components/PrimaryBtn';
 import { C, GRAD, PAGE_BG } from '../Auth/components/tokens';
+import { getMyCharacter, purchaseCharacterItem, getGoals, getTodos } from '../../services/api';
+import { useCoins } from '../../context/CoinContext';
 
 const JELLY_COLORS = [
   { name: '하늘', preview: '#BAE6FD' },
@@ -15,328 +17,181 @@ const JELLY_COLORS = [
   { name: '그레이', preview: '#D1D5DB' },
 ];
 
-const FRIEND_CHARS = [
-  { name: '김채민', colorIndex: 1 },
-  { name: '박민서', colorIndex: 4 },
-  { name: '오하민', colorIndex: 2 },
-  { name: '이준호', colorIndex: 3 },
+const SHOP_ITEMS = [
+  { id: 'hat_partyhat', name: '파티 모자', type: 'hat', value: 'partyhat', price: 50, emoji: '🥳' },
+  { id: 'hat_crown', name: '왕관', type: 'hat', value: 'crown', price: 150, emoji: '👑' },
+  { id: 'accessory_scarf', name: '목도리', type: 'accessory', value: 'scarf', price: 80, emoji: '🧣' },
+  { id: 'color_gold', name: '골드 오라', type: 'color', value: 'gold', price: 200, emoji: '✨' },
 ];
-const FRAMES = ['🪼', '🌊', '🐚', '✨', '🌸', '🐠'];
 
 function ProfilePage() {
-  const savedColor = parseInt(localStorage.getItem('jellyColor') || '0', 10);
-  const [selColor, setSelColor] = useState(savedColor);
-  const [customSaved, setCustomSaved] = useState(true);
-  const [tab, setTab] = useState('stat');
-  const [photoBooth, setPhotoBooth] = useState(false);
-  const [selFriend, setSelFriend] = useState(0);
-  const [selFrame, setSelFrame] = useState(0);
-  const [flash, setFlash] = useState(false);
-  const [photos, setPhotos] = useState([
-    { id: 1, meColorIdx: 0, friendIdx: 0, frame: '🪼', date: '2026.06.28' },
-    { id: 2, meColorIdx: 2, friendIdx: 2, frame: '🌊', date: '2026.07.01' },
-  ]);
+  const navigate = useNavigate();
+  const { coins, setBalance, refreshCoins } = useCoins();
 
+  const [selColor, setSelColor] = useState(Number(localStorage.getItem('jellyColor') || 0));
+  const [savedColor, setSavedColor] = useState(Number(localStorage.getItem('jellyColor') || 0));
+  const [colorSaved, setColorSaved] = useState(false);
+  const [tab, setTab] = useState('stat');
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
-
   const [userName, setUserName] = useState(localStorage.getItem('userName') || '사용자');
-  const userEmail = localStorage.getItem('userEmail') || '';
+  const [photoOpen, setPhotoOpen] = useState(false);
 
-  const startEditName = () => {
-    setNameInput(userName);
-    setEditingName(true);
-  };
+  const [owned, setOwned] = useState([]);
+  const [outfit, setOutfit] = useState({
+    hat: '',
+    accessory: '',
+    color: '',
+  });
+
+  const userEmail = localStorage.getItem('userEmail') || '';
+  const [completedGoals, setCompletedGoals] = useState(0);
+  const [completedTodos, setCompletedTodos] = useState(0);
+  const [totalTodos, setTotalTodos] = useState(0);
+
+  useEffect(() => {
+    async function loadCharacter() {
+      try {
+        const character = await getMyCharacter();
+        if (!character) return;
+
+        setOwned(character.ownedItems || []);
+        setOutfit({
+          hat: character.hat || '',
+          accessory: character.accessory || '',
+          color: character.color || '',
+        });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function loadStats() {
+      try {
+        const [goals, todos] = await Promise.all([getGoals(), getTodos()]);
+        setCompletedGoals(goals.filter(g => g.completed).length);
+        setTotalTodos(todos.length);
+        setCompletedTodos(todos.filter(t => t.completed ?? t.isDone).length);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    loadCharacter();
+    loadStats();
+  }, []);
+
+  const stats = useMemo(() => [
+    {
+      label: '보유 코인',
+      value: `${coins}개`,
+      icon: <Coins size={18} />,
+      color: '#B7791F',
+      bg: '#FFF7D6',
+    },
+    {
+      label: '달성한 목표',
+      value: `${completedGoals}개`,
+      icon: <Trophy size={18} />,
+      color: '#F59E0B',
+      bg: '#FEF3C7',
+    },
+    {
+      label: '완료한 할 일',
+      value: `${completedTodos}개`,
+      icon: <Check size={18} />,
+      color: '#10B981',
+      bg: '#D1FAE5',
+    },
+  ], [coins, completedGoals, completedTodos, totalTodos]);
+
   const saveName = () => {
-    const trimmed = nameInput.trim();
-    if (trimmed) {
-      setUserName(trimmed);
-      localStorage.setItem('userName', trimmed);
+    const next = nameInput.trim();
+    if (next) {
+      setUserName(next);
+      localStorage.setItem('userName', next);
     }
     setEditingName(false);
   };
 
-  const takePhoto = () => {
-    setFlash(true);
-    setTimeout(() => {
-      setPhotos(p => [{
-        id: Date.now(), meColorIdx: selColor,
-        friendIdx: selFriend, frame: FRAMES[selFrame],
-        date: new Date().toLocaleDateString('ko-KR').replace(/\. /g, '.'),
-      }, ...p]);
-      setFlash(false); setPhotoBooth(false);
-    }, 400);
+  const equip = (item) => {
+    setOutfit((prev) => ({
+      ...prev,
+      [item.type]: prev[item.type] === item.value ? '' : item.value,
+    }));
   };
 
-  const stats = [
-    { label: '달성한 목표', value: '3개', icon: <Trophy size={18} />, color: '#F59E0B', bg: '#FEF3C7' },
-    { label: '연속 달성일', value: '12일', icon: <Flame size={18} />, color: '#EF4444', bg: '#FFE4E6' },
-    { label: '완료한 할 일', value: '47개', icon: <Check size={18} />, color: '#10B981', bg: '#D1FAE5' },
-  ];
+  const buy = async (item) => {
+  if (owned.includes(item.id)) {
+    equip(item);
+    return;
+  }
+
+  if (coins < item.price) {
+    alert('코인이 부족해요!');
+    return;
+  }
+
+  try {
+    const data = await purchaseCharacterItem(item.id);
+
+    if (Number.isFinite(Number(data?.coins))) {
+      setBalance(Number(data.coins));
+    } else {
+      await refreshCoins();
+    }
+
+    if (data?.character) {
+      setOutfit({
+        hat: data.character.hat || '',
+        accessory: data.character.accessory || '',
+        color: data.character.color || '',
+      });
+    }
+
+    setOwned((prev) => [...prev, item.id]);
+
+    alert(`${item.name} 구매 완료! 바로 착용했어요`);
+  } catch (error) {
+    console.error(error);
+    alert(error.response?.data?.message || '구매에 실패했습니다.');
+  }
+};
 
   return (
-    <div style={{ minHeight: '100vh', paddingTop: '56px', background: PAGE_BG }}>
-      {flash && <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: '#fff', pointerEvents: 'none', animation: 'flash .5s ease-out forwards' }} />}
-
-      {/* Photo booth modal */}
-      {photoBooth && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 40,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px',
-          background: 'rgba(12,74,110,0.28)', backdropFilter: 'blur(6px)'
-        }} onClick={() => setPhotoBooth(false)}>
-          <div style={{ background: '#fff', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: 384, boxShadow: '0 24px 80px rgba(14,165,233,.18)' }}
-            onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-              <h3 style={{ fontWeight: 800, fontSize: '18px', color: C.deep, fontFamily: "'Nunito', sans-serif" }}>📸 사진 찍기</h3>
-              <button onClick={() => setPhotoBooth(false)} style={{
-                width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                border: 'none', background: 'transparent', cursor: 'pointer', color: C.muted
-              }}><X size={16} /></button>
-            </div>
-
-            {/* Viewfinder */}
-            <div style={{
-              borderRadius: '16px', marginBottom: '16px', minHeight: 170,
-              display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 40,
-              position: 'relative', overflow: 'hidden',
-              background: 'linear-gradient(180deg,#E0F7FF,#F0F8FF)', border: `2px solid ${C.border}`
-            }}>
-              <Bubbles n={4} />
-              <div style={{ position: 'absolute', top: 8, left: 10, fontSize: 24, opacity: 0.4 }}>{FRAMES[selFrame]}</div>
-              <div style={{ position: 'absolute', top: 8, right: 10, fontSize: 24, opacity: 0.4 }}>{FRAMES[selFrame]}</div>
-              {[
-                { ci: selColor, name: '나' },
-                { ci: FRIEND_CHARS[selFriend].colorIndex, name: FRIEND_CHARS[selFriend].name },
-              ].map((c, i) => (
-                <div key={i} style={{ textAlign: 'center', zIndex: 10, paddingBottom: 12 }}>
-                  <Jelly colorIndex={c.ci} size={0.82} float />
-                  <p style={{ fontSize: '10px', fontWeight: 700, marginTop: 4, color: C.ocean, fontFamily: "'Nunito', sans-serif" }}>{c.name}</p>
-                </div>
-              ))}
-            </div>
-
-            <p style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px', color: C.muted, fontFamily: "'Nunito', sans-serif" }}>함께 찍을 친구</p>
-            <div style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
-              {FRIEND_CHARS.map((f, i) => (
-                <button key={i} onClick={() => setSelFriend(i)} style={{
-                  flex: 1, padding: '8px', borderRadius: '12px', fontSize: '12px', fontWeight: 700,
-                  cursor: 'pointer', border: 'none', transition: 'all 0.2s', fontFamily: "'Nunito', sans-serif",
-                  ...(selFriend === i ? { background: GRAD, color: '#fff' } : { background: '#E0F7FF', color: C.ocean })
-                }}>{f.name}</button>
-              ))}
-            </div>
-
-            <p style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px', color: C.muted, fontFamily: "'Nunito', sans-serif" }}>프레임</p>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
-              {FRAMES.map((fr, i) => (
-                <button key={i} onClick={() => setSelFrame(i)} style={{
-                  width: 40, height: 40, borderRadius: '12px', fontSize: '20px',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', transition: 'all 0.2s',
-                  background: selFrame === i ? '#E0F7FF' : '#F8FAFC',
-                  border: selFrame === i ? '2px solid #0EA5E9' : '2px solid transparent',
-                  transform: selFrame === i ? 'scale(1.12)' : undefined
-                }}>{fr}</button>
-              ))}
-            </div>
-            <PrimaryBtn onClick={takePhoto}><Camera size={15} />찰칵!</PrimaryBtn>
+    <div style={{ minHeight: '100vh', paddingTop: 56, background: PAGE_BG }}>
+      {photoOpen && (
+        <div onClick={() => setPhotoOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: 'rgba(12,74,110,.28)', backdropFilter: 'blur(6px)' }}>
+          <div onClick={event => event.stopPropagation()} style={{ width: '100%', maxWidth: 390, background: '#fff', borderRadius: 24, padding: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}><h3 style={{ margin: 0, color: C.deep }}>내 해파리 사진 <Camera size={16} style={{ display: 'inline', verticalAlign: 'middle' }} /></h3><button onClick={() => setPhotoOpen(false)} style={{ border: 0, background: 'none', cursor: 'pointer', color: C.muted }}><X size={18} /></button></div>
+            <div style={{ minHeight: 210, borderRadius: 18, background: 'linear-gradient(180deg,#E0F7FF,#F0F8FF)', border: `2px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Jelly colorIndex={selColor} size={1.55} float {...outfit} /></div>
+            <div style={{ marginTop: 16 }}><PrimaryBtn onClick={() => { alert('사진첩에 저장했어요!'); setPhotoOpen(false); }}><Camera size={15} />찰칵!</PrimaryBtn></div>
           </div>
         </div>
       )}
 
-      <div style={{ maxWidth: '960px', margin: '0 auto', padding: '28px 16px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 3fr', gap: '20px' }}>
+      <style>{`@media(max-width:768px){.profile-grid{grid-template-columns:1fr!important}}`}</style>
+      <div style={{ maxWidth: 960, margin: '0 auto', padding: '28px 16px 48px' }}>
+        <div className="profile-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 3fr', gap: 20 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <Card><div style={{ padding: 24, textAlign: 'center', borderRadius: 24 }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}><Jelly colorIndex={selColor} size={1.45} float {...outfit} /></div>
+              {editingName ? <div style={{ display: 'flex', justifyContent: 'center', gap: 6 }}><input autoFocus value={nameInput} onChange={event => setNameInput(event.target.value)} onKeyDown={event => event.key === 'Enter' && saveName()} style={{ width: 145, padding: 6, borderRadius: 10, border: `2px solid ${C.ocean}`, color: C.deep }} /><button onClick={saveName} style={{ border: 0, borderRadius: 10, background: GRAD, color: '#fff' }}><Save size={14} /></button></div> : <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6 }}><h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: C.deep }}>{userName}</h2><button onClick={() => { setNameInput(userName); setEditingName(true); }} style={{ border: 0, background: '#E0F7FF', color: C.ocean, borderRadius: 999, width: 26, height: 26, cursor: 'pointer' }}><Pencil size={12} /></button></div>}
+              <p style={{ color: C.muted, fontSize: 12, margin: '4px 0 15px' }}>{userEmail}</p>
+              <button onClick={() => navigate('/shop')} style={{ width: '100%', marginBottom: 8, padding: 10, border: `2px solid ${C.border}`, borderRadius: 16, background: '#F0FBFF', color: C.ocean, fontWeight: 800, cursor: 'pointer' }}><ShoppingBag size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> 상점 가기</button><button onClick={() => setPhotoOpen(true)} style={{ width: '100%', padding: 10, border: 0, borderRadius: 16, background: GRAD, color: '#fff', fontWeight: 800, cursor: 'pointer', display: 'flex', justifyContent: 'center', gap: 7 }}><Camera size={14} />사진 찍기</button>
+            </div></Card>
 
-          {/* Left: Character */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <Card>
-              <div style={{ padding: '24px', textAlign: 'center', background: `linear-gradient(180deg,${JELLY_COLORS[selColor]?.preview || '#BAE6FD'}12,rgba(255,255,255,0.9) 55%)`, borderRadius: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
-                  <Jelly colorIndex={selColor} size={1.3} float />
-                </div>
-                {editingName ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '2px' }}>
-                    <input
-                      value={nameInput}
-                      onChange={e => setNameInput(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && saveName()}
-                      autoFocus
-                      style={{
-                        fontSize: '18px', fontWeight: 800, textAlign: 'center', width: '140px',
-                        padding: '4px 8px', borderRadius: '10px', border: `2px solid ${C.ocean}`,
-                        outline: 'none', color: C.deep, fontFamily: "'Nunito', sans-serif",
-                        background: 'rgba(255,255,255,0.8)'
-                      }}
-                    />
-                    <button onClick={saveName} style={{
-                      width: 28, height: 28, borderRadius: '50%', border: 'none',
-                      background: GRAD, color: '#fff', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}><Check size={14} /></button>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '2px' }}>
-                    <h2 style={{ fontSize: '20px', fontWeight: 800, color: C.deep, fontFamily: "'Nunito', sans-serif", margin: 0 }}>{userName}</h2>
-                    <button onClick={startEditName} style={{
-                      width: 24, height: 24, borderRadius: '50%', border: 'none',
-                      background: 'rgba(14,165,233,0.1)', color: C.ocean, cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}><Pencil size={12} /></button>
-                  </div>
-                )}
-                <p style={{ fontSize: '12px', marginBottom: '16px', color: C.muted, fontFamily: "'Nunito', sans-serif" }}>{userEmail}</p>
-                <div style={{ marginBottom: '20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px', color: C.muted, fontFamily: "'Nunito', sans-serif" }}>
-                    <span>경험치</span><span>240 / 300</span>
-                  </div>
-                  <div style={{ height: 10, borderRadius: 999, overflow: 'hidden', background: '#E0F7FF' }}>
-                    <div style={{ height: '100%', borderRadius: 999, background: GRAD, width: '80%' }} />
-                  </div>
-                </div>
-                <button onClick={() => setPhotoBooth(true)} style={{
-                  width: '100%', padding: '10px', color: '#fff', fontSize: '14px', fontWeight: 700,
-                  borderRadius: '16px', border: 'none', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                  background: GRAD, fontFamily: "'Nunito', sans-serif", transition: 'all 0.2s'
-                }}>
-                  <Camera size={14} />사진 찍기
-                </button>
-              </div>
-            </Card>
-
-            {/* Customization */}
-            <Card>
-              <div style={{ padding: '16px' }}>
-                <p style={{ fontSize: '14px', fontWeight: 800, marginBottom: '12px', color: C.deep, fontFamily: "'Nunito', sans-serif" }}>꾸미기</p>
-                <p style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px', color: C.muted, fontFamily: "'Nunito', sans-serif" }}>해파리 선택</p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-                  {JELLY_COLORS.map((j, i) => (
-                    <button key={i} onClick={() => { setSelColor(i); setCustomSaved(false); }} style={{
-                      padding: '8px', borderRadius: '16px', cursor: 'pointer',
-                      transition: 'all 0.2s', position: 'relative',
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
-                      background: selColor === i ? '#E0F7FF' : '#F8FAFC',
-                      border: selColor === i ? '3px solid #0EA5E9' : '3px solid transparent',
-                      transform: selColor === i ? 'scale(1.05)' : undefined,
-                      boxShadow: selColor === i ? '0 4px 12px rgba(14,165,233,0.2)' : undefined
-                    }}>
-                      <img src={JELLY_IMAGES[i]} alt={j.name} style={{ width: 48, height: 'auto' }} />
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: selColor === i ? C.ocean : C.muted, fontFamily: "'Nunito', sans-serif" }}>{j.name}</span>
-                    </button>
-                  ))}
-                </div>
-                <button
-                  onClick={() => {
-                    localStorage.setItem('jellyColor', String(selColor));
-                    setCustomSaved(true);
-                  }}
-                  style={{
-                    width: '100%', marginTop: '16px', padding: '10px',
-                    fontSize: '14px', fontWeight: 700, borderRadius: '16px',
-                    border: 'none', cursor: 'pointer', fontFamily: "'Nunito', sans-serif",
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                    transition: 'all 0.2s',
-                    ...(customSaved
-                      ? { background: '#E0F7FF', color: C.ocean }
-                      : { background: GRAD, color: '#fff', boxShadow: '0 4px 12px rgba(14,165,233,0.25)' })
-                  }}
-                >
-                  {customSaved ? <><Check size={14} />저장됨</> : <><Save size={14} />꾸미기 저장</>}
-                </button>
-              </div>
-            </Card>
+            <Card><div style={{ padding: 16 }}><p style={{ fontWeight: 800, color: C.deep, marginBottom: 10 }}>해파리 색상</p><div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>{JELLY_COLORS.map((color, index) => <button key={color.name} onClick={() => setSelColor(index)} style={{ padding: 8, borderRadius: 16, cursor: 'pointer', background: selColor === index ? '#E0F7FF' : '#F8FAFC', border: selColor === index ? '3px solid #0EA5E9' : '3px solid transparent' }}><img src={JELLY_IMAGES[index]} alt={color.name} style={{ width: 46 }} /><span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: C.muted }}>{color.name}</span></button>)}</div>{selColor !== savedColor && <button onClick={() => { localStorage.setItem('jellyColor', String(selColor)); setSavedColor(selColor); setColorSaved(true); setTimeout(() => setColorSaved(false), 2000); }} style={{ width: '100%', marginTop: 10, padding: 10, border: 0, borderRadius: 14, background: GRAD, color: '#fff', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><Save size={14} />색상 저장하기</button>}{colorSaved && <p style={{ textAlign: 'center', fontSize: 12, color: '#10B981', fontWeight: 700, marginTop: 6 }}>저장되었습니다!</p>}</div></Card>
           </div>
 
-          {/* Right */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {/* Tabs */}
-            <div style={{
-              display: 'flex', padding: '4px', borderRadius: '16px', gap: '4px',
-              background: 'rgba(255,255,255,0.7)', border: `1px solid ${C.border}`
-            }}>
-              {[{ key: 'stat', label: '통계' }, { key: 'photo', label: '📸 사진첩' }].map(t => (
-                <button key={t.key} onClick={() => setTab(t.key)} style={{
-                  flex: 1, padding: '8px', fontSize: '14px', fontWeight: 700,
-                  borderRadius: '12px', border: 'none', cursor: 'pointer',
-                  transition: 'all 0.2s', fontFamily: "'Nunito', sans-serif",
-                  ...(tab === t.key
-                    ? { background: GRAD, color: '#fff', boxShadow: '0 2px 8px rgba(14,165,233,0.25)' }
-                    : { background: 'transparent', color: C.muted })
-                }}>{t.label}</button>
-              ))}
+          <div>
+            <div style={{ display: 'flex', padding: 4, borderRadius: 16, gap: 4, background: 'rgba(255,255,255,.7)', border: `1px solid ${C.border}`, marginBottom: 16 }}>
+              {[['stat','통계'],['photo','사진첩']].map(([key,label]) => <button key={key} onClick={() => setTab(key)} style={{ flex: 1, padding: 9, borderRadius: 12, border: 0, cursor: 'pointer', fontWeight: 800, background: tab === key ? GRAD : 'transparent', color: tab === key ? '#fff' : C.muted }}>{label}</button>)}
             </div>
 
-            {tab === 'stat' && (
-              <>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  {stats.map((s, i) => (
-                    <div key={i} style={{ borderRadius: '24px', padding: '16px', background: s.bg }}>
-                      <div style={{
-                        width: 36, height: 36, borderRadius: '16px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        marginBottom: '8px', background: 'rgba(255,255,255,0.6)', color: s.color
-                      }}>{s.icon}</div>
-                      <p style={{ fontSize: '24px', fontWeight: 800, color: C.deep, fontFamily: "'Nunito', sans-serif" }}>{s.value}</p>
-                      <p style={{ fontSize: '12px', fontWeight: 600, color: C.muted, fontFamily: "'Nunito', sans-serif" }}>{s.label}</p>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
+            {tab === 'stat' && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>{stats.map(stat => <div key={stat.label} style={{ borderRadius: 24, padding: '14px 12px', background: stat.bg, overflow: 'hidden' }}><div style={{ width: 32, height: 32, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,.65)', color: stat.color }}>{stat.icon}</div><p style={{ fontSize: 18, fontWeight: 800, color: C.deep, marginTop: 8, whiteSpace: 'nowrap' }}>{stat.value}</p><p style={{ fontSize: 11, color: C.muted, whiteSpace: 'nowrap' }}>{stat.label}</p></div>)}</div>}
 
-            {tab === 'photo' && (
-              <Card>
-                <div style={{ padding: '20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                    <p style={{ fontWeight: 800, color: C.deep, fontFamily: "'Nunito', sans-serif" }}>사진첩</p>
-                    <PrimaryBtn small onClick={() => setPhotoBooth(true)}><Camera size={13} />새 사진</PrimaryBtn>
-                  </div>
-                  {photos.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '48px 0' }}>
-                      <div style={{ fontSize: '48px', marginBottom: '12px' }}>🪼</div>
-                      <p style={{ fontSize: '14px', fontWeight: 700, color: C.subtle, fontFamily: "'Nunito', sans-serif" }}>아직 사진이 없어요</p>
-                      <p style={{ fontSize: '12px', marginTop: '4px', color: C.subtle, fontFamily: "'Nunito', sans-serif" }}>친구 해파리랑 첫 사진을 찍어봐요!</p>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                      {photos.map(p => (
-                        <div key={p.id} style={{
-                          position: 'relative', borderRadius: '16px', overflow: 'hidden',
-                          background: 'linear-gradient(180deg,#E0F7FF,#F0F8FF)', border: `2px solid ${C.border}`
-                        }}>
-                          <div style={{ position: 'absolute', top: 8, left: 8, fontSize: 18, opacity: 0.35 }}>{p.frame}</div>
-                          <div style={{ position: 'absolute', top: 8, right: 8, fontSize: 18, opacity: 0.35 }}>{p.frame}</div>
-                          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 20, paddingTop: 24, paddingBottom: 12, paddingLeft: 12, paddingRight: 12 }}>
-                            {[
-                              { ci: p.meColorIdx, name: '나' },
-                              { ci: FRIEND_CHARS[p.friendIdx].colorIndex, name: FRIEND_CHARS[p.friendIdx].name },
-                            ].map((c, i) => (
-                              <div key={i} style={{ textAlign: 'center' }}>
-                                <Jelly colorIndex={c.ci} size={0.62} float />
-                                <p style={{ fontSize: '9px', fontWeight: 700, marginTop: 2, color: C.ocean, fontFamily: "'Nunito', sans-serif" }}>{c.name}</p>
-                              </div>
-                            ))}
-                          </div>
-                          <div style={{ textAlign: 'center', padding: '6px', borderTop: `1px solid ${C.border}`, background: 'rgba(255,255,255,0.6)' }}>
-                            <p style={{ fontSize: '10px', fontWeight: 600, color: C.muted, fontFamily: "'Nunito', sans-serif" }}>{p.date}</p>
-                          </div>
-                        </div>
-                      ))}
-                      <button onClick={() => setPhotoBooth(true)} style={{
-                        borderRadius: '16px', border: `2px dashed ${C.border}`,
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                        gap: '8px', minHeight: 160, background: 'transparent', cursor: 'pointer',
-                        transition: 'background 0.2s'
-                      }}>
-                        <Camera size={20} style={{ color: C.subtle }} />
-                        <p style={{ fontSize: '12px', fontWeight: 700, color: C.subtle, fontFamily: "'Nunito', sans-serif" }}>새 사진 찍기</p>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            )}
+            {tab === 'photo' && <Card><div style={{ padding: 28, textAlign: 'center' }}><Sparkles size={26} color={C.ocean} /><h2 style={{ color: C.deep, fontWeight: 800 }}>해파리 사진첩</h2><p style={{ color: C.muted, fontSize: 13, marginBottom: 16 }}>구매한 옷을 입고 내 사진을 남길 수 있어요.</p><PrimaryBtn onClick={() => setPhotoOpen(true)}><Camera size={15} />새 사진 찍기</PrimaryBtn></div></Card>}
           </div>
         </div>
       </div>
