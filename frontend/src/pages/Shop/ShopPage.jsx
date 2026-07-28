@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Coins, ShoppingBag } from 'lucide-react';
+import { Check, Coins } from 'lucide-react';
 import Card from '../Auth/components/Card';
-import Jelly from '../Auth/components/Jelly';
+import Jelly, { HAT_IMAGES, EXPRESSION_IMAGES, EFFECT_IMAGES } from '../Auth/components/Jelly';
 import { C, GRAD, PAGE_BG } from '../Auth/components/tokens';
 import { useCoins } from '../../context/CoinContext';
 import { purchaseCharacterItem } from '../../services/api';
@@ -12,93 +12,28 @@ const CATS = [
   ['expression', '표정'],
 ];
 
+const ITEM_THUMB = { hat: HAT_IMAGES, expression: EXPRESSION_IMAGES, effect: EFFECT_IMAGES };
+
 const ITEMS = [
   { id: 'none-hat', cat: 'hat', name: '기본', value: '', price: 0 },
-  {
-    id: 'hat_partyhat',
-    cat: 'hat',
-    name: '파티 모자',
-    value: 'partyhat',
-    price: 50,
-    backend: true,
-  },
-  {
-    id: 'hat_crown',
-    cat: 'hat',
-    name: '왕관',
-    value: 'crown',
-    price: 150,
-    backend: true,
-  },
-  { id: 'hat_ribbon', cat: 'hat', name: '리본', value: 'ribbon', price: 70 },
-  { id: 'hat_beret', cat: 'hat', name: '베레모', value: 'beret', price: 90 },
+  { id: 'hat_ribbon', cat: 'hat', name: '리본', value: 'ribbon', price: 50, backend: true },
+  { id: 'hat_bunny', cat: 'hat', name: '토끼 머리띠', value: 'bunny', price: 70, backend: true },
+  { id: 'hat_crown', cat: 'hat', name: '왕관', value: 'crown', price: 150, backend: true },
+  { id: 'hat_cat', cat: 'hat', name: '고양이 머리띠', value: 'cat', price: 90, backend: true },
+  { id: 'hat_halo', cat: 'hat', name: '헤일로', value: 'halo', price: 120, backend: true },
+  { id: 'hat_flower', cat: 'hat', name: '꽃 머리띠', value: 'flower', price: 100, backend: true },
 
   { id: 'none-effect', cat: 'effect', name: '기본', value: '', price: 0 },
-  {
-    id: 'effect_bubbles',
-    cat: 'effect',
-    name: '물방울',
-    value: 'bubbles',
-    price: 35,
-  },
-  {
-    id: 'effect_sparkles',
-    cat: 'effect',
-    name: '반짝임',
-    value: 'sparkles',
-    price: 60,
-  },
-  {
-    id: 'effect_flowers',
-    cat: 'effect',
-    name: '꽃가루',
-    value: 'flowers',
-    price: 80,
-  },
-  {
-    id: 'color_gold',
-    cat: 'effect',
-    name: '골드 오라',
-    value: 'gold',
-    price: 200,
-    backend: true,
-  },
+  { id: 'effect_bubbles', cat: 'effect', name: '물방울', value: 'bubbles', price: 35 },
+  { id: 'effect_sparkles', cat: 'effect', name: '반짝임', value: 'sparkles', price: 60 },
+  { id: 'effect_flowers', cat: 'effect', name: '꽃가루', value: 'flowers', price: 80 },
+  { id: 'color_gold', cat: 'effect', name: '골드 오라', value: 'gold', price: 200, backend: true },
 
-  {
-    id: 'expression_normal',
-    cat: 'expression',
-    name: '기본 표정',
-    value: 'normal',
-    price: 0,
-  },
-  {
-    id: 'expression_smile',
-    cat: 'expression',
-    name: '활짝 웃음',
-    value: 'smile',
-    price: 20,
-  },
-  {
-    id: 'expression_heart',
-    cat: 'expression',
-    name: '하트 눈',
-    value: 'heart',
-    price: 45,
-  },
-  {
-    id: 'expression_sleepy',
-    cat: 'expression',
-    name: '졸린 표정',
-    value: 'sleepy',
-    price: 30,
-  },
-  {
-    id: 'expression_wink',
-    cat: 'expression',
-    name: '윙크',
-    value: 'wink',
-    price: 40,
-  },
+  { id: 'expression_normal', cat: 'expression', name: '기본 표정', value: 'normal', price: 0 },
+  { id: 'expression_wink', cat: 'expression', name: '윙크', value: 'wink', price: 20 },
+  { id: 'expression_smile', cat: 'expression', name: '활짝 웃음', value: 'smile', price: 30 },
+  { id: 'expression_sleepy', cat: 'expression', name: '졸린 표정', value: 'sleepy', price: 35 },
+  { id: 'expression_heart', cat: 'expression', name: '하트 눈', value: 'heart', price: 45 },
 ];
 
 const read = (key, fallback) => {
@@ -215,7 +150,7 @@ export default function ShopPage() {
                 margin: 0,
               }}
             >
-              해파리 상점
+              해파리 상점 🛍️
             </h1>
             <p
               style={{
@@ -371,11 +306,15 @@ export default function ShopPage() {
                         justifyContent: 'center',
                       }}
                     >
-                      <Jelly
-                        colorIndex={colorIndex}
-                        size={0.72}
-                        {...{ [item.cat]: item.value }}
-                      />
+                      {item.value && ITEM_THUMB[item.cat]?.[item.value] ? (
+                        <img src={ITEM_THUMB[item.cat][item.value]} alt={item.name} style={{ height: 64, objectFit: 'contain' }} />
+                      ) : (
+                        <Jelly
+                          colorIndex={colorIndex}
+                          size={0.72}
+                          {...{ [item.cat]: item.value }}
+                        />
+                      )}
                     </div>
 
                     <p

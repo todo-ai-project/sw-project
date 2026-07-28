@@ -11,4 +11,4 @@ export const C = {
 };
 
 export const GRAD = "linear-gradient(135deg,#0EA5E9,#06B6D4)";
-export const PAGE_BG = "linear-gradient(160deg,#E8F7FF 0%,#F0F4FF 55%,#F5EEFF 100%)";
+export const PAGE_BG = "url('/assets/background.png') center/cover fixed, linear-gradient(160deg,#E8F7FF 0%,#F0F4FF 55%,#F5EEFF 100%)";

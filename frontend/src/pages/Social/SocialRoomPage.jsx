@@ -1,12 +1,20 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Camera, Check, Cloud, Rainbow, Users, X, Target, Coins, Flower2, Shell } from 'lucide-react';
+import { ArrowLeft, Camera, Check, Users, X, Target, Coins } from 'lucide-react';
 import Card from '../Auth/components/Card';
 import Jelly from '../Auth/components/Jelly';
 import PrimaryBtn from '../Auth/components/PrimaryBtn';
 import { C, GRAD, PAGE_BG } from '../Auth/components/tokens';
 import { useMissions } from '../../context/MissionContext';
 import { getGoals, getTodos, getCrewTodos, getCrewMembers, leaveCrew } from '../../services/api';
+
+const PHOTO_BACKGROUNDS = [
+  '/assets/backgrounds/back1.png',
+  '/assets/backgrounds/back2.png',
+  '/assets/backgrounds/back3.png',
+  '/assets/backgrounds/back4.png',
+  '/assets/backgrounds/back5.png',
+];
 
 function readJson(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; }
@@ -36,6 +44,7 @@ export default function SocialRoomPage() {
   const [friendTodos, setFriendTodos] = useState([]);
   const [friend, setFriend] = useState(0);
   const [photoOpen, setPhotoOpen] = useState(false);
+  const [photoBg, setPhotoBg] = useState(0);
   const [teamBonusClaimed, setTeamBonusClaimed] = useState(() => {
     const today = new Date().toISOString().slice(0, 10);
     return readJson('todoongsilTeamBonus', {})[`${roomId}:${today}`] || false;
@@ -162,15 +171,22 @@ export default function SocialRoomPage() {
               <h3 style={{ margin: 0, color: C.deep, display: 'flex', alignItems: 'center', gap: 6 }}>친구와 사진 찍기 <Camera size={16} /></h3>
               <button onClick={() => setPhotoOpen(false)} style={{ border: 0, background: 'none', color: C.muted }}><X size={18} /></button>
             </div>
-            <div style={{ height: 230, borderRadius: 22, marginTop: 16, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 8, paddingBottom: 22, background: 'linear-gradient(180deg,#CFF4FF 0%,#EAF7FF 55%,#DDF7E8 56%,#BFE8D0 100%)', border: `2px solid ${C.border}` }}>
-              <Cloud size={28} style={{ position: 'absolute', top: 18, left: 24, color: '#fff', opacity: 0.7 }} />
-              <Rainbow size={24} style={{ position: 'absolute', top: 24, right: 28, color: '#F9A8D4', opacity: 0.6 }} />
-              <Flower2 size={22} style={{ position: 'absolute', bottom: 10, left: 16, color: '#F9A8D4', opacity: 0.5 }} />
-              <Shell size={22} style={{ position: 'absolute', bottom: 10, right: 20, color: '#BAE6FD', opacity: 0.5 }} />
+            <div style={{ height: 230, borderRadius: 22, marginTop: 16, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 8, paddingBottom: 22, border: `2px solid ${C.border}` }}>
+              <img src={PHOTO_BACKGROUNDS[photoBg]} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
               <Jelly colorIndex={myColorIndex} size={1.25} float />
               <Jelly colorIndex={friends[friend]?.colorIndex || 0} size={1.25} float />
             </div>
-            <div style={{ display: 'flex', gap: 8, margin: '14px 0 18px' }}>
+            <div style={{ display: 'flex', gap: 6, margin: '12px 0 8px' }}>
+              {PHOTO_BACKGROUNDS.map((bg, i) => (
+                <button key={i} onClick={() => setPhotoBg(i)} style={{
+                  width: 40, height: 40, borderRadius: 10, border: photoBg === i ? '2px solid #0EA5E9' : '2px solid transparent',
+                  padding: 0, cursor: 'pointer', overflow: 'hidden', background: '#E0F7FF'
+                }}>
+                  <img src={bg} alt={`배경 ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8, margin: '6px 0 18px' }}>
               {friends.map((m, i) => (
                 <button key={m.name} onClick={() => setFriend(i)} style={{
                   flex: 1, padding: 8, borderRadius: 12, border: 0, fontWeight: 800,
