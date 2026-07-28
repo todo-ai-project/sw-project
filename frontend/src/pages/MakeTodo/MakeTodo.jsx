@@ -7,7 +7,7 @@ import Card from '../Auth/components/Card';
 import PrimaryBtn from '../Auth/components/PrimaryBtn';
 import { C, PAGE_BG } from '../Auth/components/tokens';
 import AnalyzePage from './AnalyzePage';
-import { createGoal } from '../../services/api';
+import { createGoal, deleteGoal } from '../../services/api';
 import { useMissions } from '../../context/MissionContext';
 
 const EXAMPLES = ['토익 900점 달성', '3개월 안에 5kg 감량', '개발자로 취업하기', '매일 책 30분 읽기'];
@@ -28,6 +28,7 @@ function MakeTodo() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [createdGoalId, setCreatedGoalId] = useState(null);
   const [error, setError] = useState('');
 
   const handleSubmit = async () => {
@@ -45,6 +46,7 @@ function MakeTodo() {
 
     try {
       const data = await createGoal(goalWithDeadline, deadlineStr);
+      setCreatedGoalId(data?.goalId || data?.id || null);
       setResult(data?.todos || data);
       completeMission('create-goal');
     } catch (requestError) {
@@ -63,7 +65,12 @@ function MakeTodo() {
         error={error}
         userGoal={goal}
         onGoToList={() => navigate('/goals')}
-        onReset={() => { setIsAnalyzing(false); setResult(null); setGoal(''); setError(''); }}
+        onReset={async () => {
+          if (createdGoalId) {
+            try { await deleteGoal(createdGoalId); } catch {}
+          }
+          setIsAnalyzing(false); setResult(null); setCreatedGoalId(null); setGoal(''); setError('');
+        }}
       />
     );
   }

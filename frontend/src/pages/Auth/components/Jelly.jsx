@@ -14,15 +14,14 @@ const HAT_IMAGES = {
   cat: '/assets/hats/acc4.png',
   halo: '/assets/hats/acc5.png',
   flower: '/assets/hats/acc6.png',
-  partyhat: '/assets/hats/acc4.png',
-  beret: '/assets/hats/acc2.png',
 };
 
 const EXPRESSION_IMAGES = {
+  normal: '/assets/expressions/emo_defalt.png',
+  smile: '/assets/expressions/emo1.png',
   wink: '/assets/expressions/emo2.png',
-  smile: '/assets/expressions/emo3.png',
+  heart: '/assets/expressions/emo3.png',
   sleepy: '/assets/expressions/emo4.png',
-  heart: '/assets/expressions/emo5.png',
 };
 
 const EFFECT_IMAGES = {
@@ -32,6 +31,16 @@ const EFFECT_IMAGES = {
   sparkles: '/assets/effects/eff4.png',
 };
 
+const OVERLAY_STYLE = {
+  position: 'absolute',
+  width: '100%',
+  height: '100%',
+  top: 0,
+  left: 0,
+  objectFit: 'contain',
+  pointerEvents: 'none',
+};
+
 function Jelly({
   colorIndex = 0,
   size = 1,
@@ -39,11 +48,8 @@ function Jelly({
   hat = '',
   effect = '',
   expression = 'normal',
-  accessory = '',
-  color = '',
 }) {
-  const width = Math.round(90 * size);
-  const activeEffect = effect || (color === 'gold' ? 'gold' : '');
+  const width = Math.round(112 * size);
 
   return (
     <div
@@ -54,21 +60,12 @@ function Jelly({
         animation: float ? 'jellyFloat 2.8s ease-in-out infinite' : undefined,
       }}
     >
-      {activeEffect && EFFECT_IMAGES[activeEffect] && (
+      {effect && EFFECT_IMAGES[effect] && (
         <img
-          src={EFFECT_IMAGES[activeEffect]}
+          src={EFFECT_IMAGES[effect]}
           alt=""
           draggable={false}
-          style={{
-            position: 'absolute',
-            width: '160%',
-            height: '160%',
-            top: '-30%',
-            left: '-30%',
-            objectFit: 'contain',
-            pointerEvents: 'none',
-            zIndex: 0,
-          }}
+          style={{ ...OVERLAY_STYLE, zIndex: 0 }}
         />
       )}
 
@@ -90,34 +87,16 @@ function Jelly({
           src={HAT_IMAGES[hat]}
           alt=""
           draggable={false}
-          style={{
-            position: 'absolute',
-            width: '60%',
-            top: '-20%',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            objectFit: 'contain',
-            pointerEvents: 'none',
-            zIndex: 2,
-          }}
+          style={{ ...OVERLAY_STYLE, zIndex: 2 }}
         />
       )}
 
-      {expression !== 'normal' && EXPRESSION_IMAGES[expression] && (
+      {EXPRESSION_IMAGES[expression] && (
         <img
           src={EXPRESSION_IMAGES[expression]}
           alt=""
           draggable={false}
-          style={{
-            position: 'absolute',
-            width: '50%',
-            top: '28%',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            objectFit: 'contain',
-            pointerEvents: 'none',
-            zIndex: 2,
-          }}
+          style={{ ...OVERLAY_STYLE, zIndex: 2 }}
         />
       )}
     </div>

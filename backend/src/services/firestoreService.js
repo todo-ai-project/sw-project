@@ -46,10 +46,10 @@ class FirestoreService {
   }
 
   async update(id, data) {
-    await this.collection.doc(id).update({
+    await this.collection.doc(id).set({
       ...data,
       updatedAt: FieldValue.serverTimestamp(),
-    });
+    }, { merge: true });
     return this.getById(id);
   }
 

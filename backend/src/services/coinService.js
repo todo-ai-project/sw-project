@@ -5,14 +5,9 @@ const usersCollection = () => db.collection('users');
 
 // 코인 적립 (동시 요청에도 안전 - Firestore 원자적 증가 사용)
 async function addCoins(uid, amount) {
-  console.log("addCoins:", uid, amount);
-
   await usersCollection().doc(uid).update({
     coins: FieldValue.increment(amount),
   });
-
-  const doc = await usersCollection().doc(uid).get();
-  console.log("현재 코인:", doc.data().coins);
 }
 
 // 코인 조회

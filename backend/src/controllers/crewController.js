@@ -11,7 +11,16 @@ async function getCrews(req, res, next) {
   try {
     const snapshot = await crewStore.collection.get();
     const crews = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    res.json(crews);
+
+    const usersSnapshot = await userStore.collection.get();
+    const memberCounts = {};
+    usersSnapshot.docs.forEach((doc) => {
+      const cid = doc.data().crewId;
+      if (cid) memberCounts[cid] = (memberCounts[cid] || 0) + 1;
+    });
+
+    const result = crews.map((c) => ({ ...c, members: memberCounts[c.id] || 0 }));
+    res.json(result);
   } catch (err) {
     next(err);
   }

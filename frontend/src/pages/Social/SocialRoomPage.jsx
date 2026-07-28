@@ -8,12 +8,13 @@ import { C, GRAD, PAGE_BG } from '../Auth/components/tokens';
 import { useMissions } from '../../context/MissionContext';
 import { getGoals, getTodos, getCrewTodos, getCrewMembers, leaveCrew } from '../../services/api';
 
-const PHOTO_BACKGROUNDS = [
-  '/assets/backgrounds/back1.png',
-  '/assets/backgrounds/back2.png',
-  '/assets/backgrounds/back3.png',
-  '/assets/backgrounds/back4.png',
-  '/assets/backgrounds/back5.png',
+const ALL_BACKGROUNDS = [
+  { id: 'bg_none', name: '기본', value: '', src: null },
+  { id: 'bg_cave', name: '해저 동굴', value: 'cave', src: '/assets/backgrounds/back1.png' },
+  { id: 'bg_coral', name: '산호초 바다', value: 'coral', src: '/assets/backgrounds/back2.png' },
+  { id: 'bg_beach', name: '여름 해변', value: 'beach', src: '/assets/backgrounds/back3.png' },
+  { id: 'bg_ring', name: '바다 튜브', value: 'ring', src: '/assets/backgrounds/back4.png' },
+  { id: 'bg_shell', name: '조개 무대', value: 'shell', src: '/assets/backgrounds/back5.png' },
 ];
 
 function readJson(key, fallback) {
@@ -31,6 +32,7 @@ export default function SocialRoomPage() {
   }, [location.state, roomId]);
 
   const myColorIndex = Number(localStorage.getItem('jellyColor') || 0);
+  const myOutfit = readJson('todoongsilOutfit', { hat: '', effect: '', expression: 'normal' });
   const myName = localStorage.getItem('userName') || '나';
 
   const [members, setMembers] = useState([]);
@@ -44,7 +46,10 @@ export default function SocialRoomPage() {
   const [friendTodos, setFriendTodos] = useState([]);
   const [friend, setFriend] = useState(0);
   const [photoOpen, setPhotoOpen] = useState(false);
-  const [photoBg, setPhotoBg] = useState(0);
+  const [photoTaken, setPhotoTaken] = useState(null);
+  const [photoBgIdx, setPhotoBgIdx] = useState(0);
+  const ownedItems = readJson('todoongsilOwnedItems', ['bg_none']);
+  const ownedBgs = ALL_BACKGROUNDS.filter(bg => bg.id === 'bg_none' || ownedItems.includes(bg.id));
   const [teamBonusClaimed, setTeamBonusClaimed] = useState(() => {
     const today = new Date().toISOString().slice(0, 10);
     return readJson('todoongsilTeamBonus', {})[`${roomId}:${today}`] || false;
@@ -75,7 +80,7 @@ export default function SocialRoomPage() {
         completed: Boolean(g.completed),
       })));
     } catch (err) {
-      console.error('목표 로드 실패:', err);
+      if (err.message !== 'AUTH_REQUIRED') console.error('목표 로드 실패:', err);
     } finally {
       setGoalsLoaded(true);
     }
@@ -128,9 +133,22 @@ export default function SocialRoomPage() {
   };
 
   const take = () => {
-    const friendName = friends[friend]?.name || '친구';
+    const f = friends[friend];
+    const friendName = f?.name || '친구';
+    const bg = ownedBgs[photoBgIdx] || ownedBgs[0];
+    const photo = {
+      id: Date.now(),
+      date: new Date().toISOString(),
+      roomName: room.name,
+      me: { name: myName, colorIndex: myColorIndex, outfit: myOutfit },
+      friend: { name: friendName, colorIndex: f?.colorIndex || 0 },
+      bg: bg.src || null,
+    };
+    const saved = readJson('todoongsilPhotos', []);
+    saved.unshift(photo);
+    localStorage.setItem('todoongsilPhotos', JSON.stringify(saved.slice(0, 50)));
     completeMission('room-photo', { friendName });
-    setPhotoOpen(false);
+    setPhotoTaken(photo);
   };
 
   const showGoalPicker = goalsLoaded && !selectedGoalId;
@@ -165,37 +183,61 @@ export default function SocialRoomPage() {
       )}
 
       {photoOpen && friends.length > 0 && (
-        <div onClick={() => setPhotoOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: 'rgba(12,74,110,.3)', backdropFilter: 'blur(7px)' }}>
+        <div onClick={() => { setPhotoOpen(false); setPhotoTaken(null); }} style={{ position: 'fixed', inset: 0, zIndex: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: 'rgba(12,74,110,.3)', backdropFilter: 'blur(7px)' }}>
           <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 430, padding: 24, borderRadius: 26, background: '#fff' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <h3 style={{ margin: 0, color: C.deep, display: 'flex', alignItems: 'center', gap: 6 }}>친구와 사진 찍기 <Camera size={16} /></h3>
-              <button onClick={() => setPhotoOpen(false)} style={{ border: 0, background: 'none', color: C.muted }}><X size={18} /></button>
-            </div>
-            <div style={{ height: 230, borderRadius: 22, marginTop: 16, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 8, paddingBottom: 22, border: `2px solid ${C.border}` }}>
-              <img src={PHOTO_BACKGROUNDS[photoBg]} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-              <Jelly colorIndex={myColorIndex} size={1.25} float />
-              <Jelly colorIndex={friends[friend]?.colorIndex || 0} size={1.25} float />
-            </div>
-            <div style={{ display: 'flex', gap: 6, margin: '12px 0 8px' }}>
-              {PHOTO_BACKGROUNDS.map((bg, i) => (
-                <button key={i} onClick={() => setPhotoBg(i)} style={{
-                  width: 40, height: 40, borderRadius: 10, border: photoBg === i ? '2px solid #0EA5E9' : '2px solid transparent',
-                  padding: 0, cursor: 'pointer', overflow: 'hidden', background: '#E0F7FF'
-                }}>
-                  <img src={bg} alt={`배경 ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                </button>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: 8, margin: '6px 0 18px' }}>
-              {friends.map((m, i) => (
-                <button key={m.name} onClick={() => setFriend(i)} style={{
-                  flex: 1, padding: 8, borderRadius: 12, border: 0, fontWeight: 800,
-                  background: friend === i ? GRAD : '#E0F7FF',
-                  color: friend === i ? '#fff' : C.ocean
-                }}>{m.name}</button>
-              ))}
-            </div>
-            <PrimaryBtn onClick={take}><Camera size={15} />찰칵!</PrimaryBtn>
+            {photoTaken ? (
+              <>
+                <div style={{ textAlign: 'center', marginBottom: 14 }}>
+                  <h3 style={{ margin: '0 0 6px', color: C.deep }}>오늘의 {photoTaken.friend.name}와(과)의 사진을 찍었어요!</h3>
+                </div>
+                <div style={{ height: 280, borderRadius: 22, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 0, paddingBottom: 22, border: `2px solid ${C.border}`, background: '#fff' }}>
+                  {photoTaken.bg && <img src={photoTaken.bg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
+                  <div style={{ position: 'relative', marginRight: -16 }}><Jelly colorIndex={photoTaken.me.colorIndex} size={1.7} float {...(photoTaken.me.outfit || {})} /></div>
+                  <div style={{ position: 'relative', marginLeft: -16 }}><Jelly colorIndex={photoTaken.friend.colorIndex} size={1.7} float /></div>
+                </div>
+                <div style={{ marginTop: 16 }}>
+                  <PrimaryBtn onClick={() => { setPhotoOpen(false); setPhotoTaken(null); navigate('/profile', { state: { tab: 'photo' } }); }}>내 사진첩에서 확인하기</PrimaryBtn>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <h3 style={{ margin: 0, color: C.deep, display: 'flex', alignItems: 'center', gap: 6 }}>친구와 사진 찍기 <Camera size={16} /></h3>
+                  <button onClick={() => setPhotoOpen(false)} style={{ border: 0, background: 'none', color: C.muted }}><X size={18} /></button>
+                </div>
+                <div style={{ height: 280, borderRadius: 22, marginTop: 16, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 0, paddingBottom: 22, border: `2px solid ${C.border}`, background: '#fff' }}>
+                  {ownedBgs[photoBgIdx]?.src && (
+                    <img src={ownedBgs[photoBgIdx].src} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                  )}
+                  <div style={{ position: 'relative', marginRight: -16 }}><Jelly colorIndex={myColorIndex} size={1.7} float {...myOutfit} /></div>
+                  <div style={{ position: 'relative', marginLeft: -16 }}><Jelly colorIndex={friends[friend]?.colorIndex || 0} size={1.7} float /></div>
+                </div>
+                <div style={{ display: 'flex', gap: 6, margin: '12px 0 8px', flexWrap: 'wrap' }}>
+                  {ownedBgs.map((bg, i) => (
+                    <button key={bg.id} onClick={() => setPhotoBgIdx(i)} style={{
+                      width: 40, height: 40, borderRadius: 10, border: photoBgIdx === i ? '2px solid #0EA5E9' : '2px solid transparent',
+                      padding: 0, cursor: 'pointer', overflow: 'hidden', background: bg.src ? '#E0F7FF' : '#fff'
+                    }}>
+                      {bg.src ? (
+                        <img src={bg.src} alt={bg.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', fontSize: 9, color: C.muted, fontWeight: 800, border: `1px solid ${C.border}`, borderRadius: 10 }}>기본</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 8, margin: '6px 0 18px' }}>
+                  {friends.map((m, i) => (
+                    <button key={m.name} onClick={() => setFriend(i)} style={{
+                      flex: 1, padding: 8, borderRadius: 12, border: 0, fontWeight: 800,
+                      background: friend === i ? GRAD : '#E0F7FF',
+                      color: friend === i ? '#fff' : C.ocean
+                    }}>{m.name}</button>
+                  ))}
+                </div>
+                <PrimaryBtn onClick={take}><Camera size={15} />찰칵!</PrimaryBtn>
+              </>
+            )}
           </div>
         </div>
       )}

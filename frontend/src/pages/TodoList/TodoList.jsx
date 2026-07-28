@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, ChevronRight, Check, Plus, Trash2, Target, Pencil, Coins } from 'lucide-react';
+import { ChevronDown, ChevronRight, Check, Plus, Trash2, Target, Coins } from 'lucide-react';
 import Jelly from '../Auth/components/Jelly';
 import Card from '../Auth/components/Card';
 import { C, GRAD, PAGE_BG } from '../Auth/components/tokens';
@@ -30,8 +30,10 @@ function TodoList() {
   const [open, setOpen] = useState(new Set());
   const [newText, setNewText] = useState({});
   const [adding, setAdding] = useState(null);
-  const [editMode, setEditMode] = useState(false);
-  const [selColor, setSelColor] = useState(parseInt(localStorage.getItem('jellyColor') || '0', 10));
+  const [selColor] = useState(parseInt(localStorage.getItem('jellyColor') || '0', 10));
+  const [outfit] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('todoongsilOutfit')) || { hat: '', effect: '', expression: 'normal' }; } catch { return { hat: '', effect: '', expression: 'normal' }; }
+  });
 
   const fetchTodos = useCallback(async () => {
     try {
@@ -44,7 +46,7 @@ function TodoList() {
         order: item.order ?? 0,
       })));
     } catch (error) {
-      console.error('할 일 로드 실패:', error);
+      if (error.message !== 'AUTH_REQUIRED') console.error('할 일 로드 실패:', error);
     }
   }, []);
 
@@ -58,7 +60,7 @@ function TodoList() {
       }));
       setGoals(mapped);
     } catch (error) {
-      console.error('목표 로드 실패:', error);
+      if (error.message !== 'AUTH_REQUIRED') console.error('목표 로드 실패:', error);
     }
   }, []);
 
@@ -144,8 +146,10 @@ function TodoList() {
     }
   };
 
-  const doneCount = todos.filter(todo => todo.done).length;
-  const pct = todos.length ? Math.round((doneCount / todos.length) * 100) : 0;
+  const goalIds = new Set(goals.map(g => g.id));
+  const activeTodos = todos.filter(todo => goalIds.has(todo.goalId));
+  const doneCount = activeTodos.filter(todo => todo.done).length;
+  const pct = activeTodos.length ? Math.round((doneCount / activeTodos.length) * 100) : 0;
   const jellyPreview = JELLY_PREVIEW_COLORS[selColor] || JELLY_PREVIEW_COLORS[0];
   const userName = localStorage.getItem('userName') || '사용자';
   const [cheer] = useState(() => CHEERS[Math.floor(Math.random() * CHEERS.length)]);
@@ -155,77 +159,40 @@ function TodoList() {
       <div style={{ maxWidth: '768px', margin: '0 auto', padding: '24px 16px 48px' }}>
         <Card>
           <div style={{ padding: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '16px' }}>
-              <div style={{
-                flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: 96, height: 108, borderRadius: '50%',
-                background: `radial-gradient(circle,${jellyPreview}22,transparent 70%)`
-              }}>
-                <Jelly colorIndex={selColor} size={1.25} float />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <p style={{ fontSize: '12px', fontWeight: 700, color: C.muted, fontFamily: "'Nunito', sans-serif", margin: 0 }}>
-                    {userName}의 해파리 🪼
-                  </p>
-                  <button onClick={() => setEditMode(value => !value)} style={{
-                    display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px',
-                    borderRadius: '12px', fontSize: '12px', fontWeight: 700, border: '2px solid',
-                    cursor: 'pointer', fontFamily: "'Nunito', sans-serif",
-                    ...(editMode
-                      ? { background: GRAD, color: '#fff', borderColor: 'transparent' }
-                      : { background: '#F0FBFF', color: C.ocean, borderColor: C.border })
-                  }}>
-                    <Pencil size={11} />{editMode ? '완료' : '꾸미기'}
-                  </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+              <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <p style={{ fontSize: '12px', fontWeight: 700, color: C.muted, fontFamily: "'Nunito', sans-serif", margin: '0 0 4px' }}>
+                  {userName}의 해파리
+                </p>
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 120, height: 135, borderRadius: '50%',
+                  background: `radial-gradient(circle,${jellyPreview}22,transparent 70%)`
+                }}>
+                  <Jelly colorIndex={selColor} size={1.6} float {...outfit} />
                 </div>
-                {editMode && (
-                  <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: `1px solid ${C.border}` }}>
-                    <p style={{ fontSize: '10px', fontWeight: 700, marginBottom: '6px', color: C.muted }}>해파리 선택</p>
-                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                      {JELLY_PREVIEW_COLORS.map((_, index) => (
-                        <button key={index} onClick={() => {
-                          setSelColor(index);
-                          localStorage.setItem('jellyColor', String(index));
-                        }} style={{
-                          width: 36, height: 36, borderRadius: '10px', cursor: 'pointer', padding: '2px',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          background: selColor === index ? '#E0F7FF' : '#F8FBFF',
-                          border: selColor === index ? '2px solid #0EA5E9' : `2px solid ${C.border}`,
-                          transform: selColor === index ? 'scale(1.15)' : undefined,
-                        }}>
-                          <img src={`/jelly/jelly_${['blue','pink','green','yellow','puple','grey'][index]}.png`} alt="" style={{ width: 28 }} />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
-            </div>
-
-            <div style={{ borderTop: `1px solid ${C.border}`, marginBottom: '16px' }} />
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: '11px', fontWeight: 600, marginBottom: '4px', color: C.muted, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <p style={{ fontSize: '11px', fontWeight: 600, color: C.muted, display: 'flex', alignItems: 'center', gap: '4px', margin: '0 0 4px' }}>
                   <Target size={11} /> 전체 진행률
                 </p>
-                <h2 style={{ fontSize: '20px', fontWeight: 800, lineHeight: 1.3, marginBottom: '8px', color: C.deep }}>
+                <h2 style={{ fontSize: '18px', fontWeight: 800, lineHeight: 1.3, margin: '4px 0 10px', color: C.deep }}>
                   {cheer}
                 </h2>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{ flex: 1, height: 10, borderRadius: 999, overflow: 'hidden', background: '#E0F7FF' }}>
                     <div style={{ height: '100%', borderRadius: 999, background: GRAD, width: `${pct}%`, transition: 'width .5s' }} />
                   </div>
-                  <span style={{ fontSize: '14px', fontWeight: 800, color: C.ocean }}>{doneCount}/{todos.length} · {pct}%</span>
+                  <span style={{ fontSize: '14px', fontWeight: 800, color: C.ocean, whiteSpace: 'nowrap' }}>{doneCount}/{activeTodos.length} · {pct}%</span>
+                  <button onClick={() => navigate('/make')} style={{
+                    flexShrink: 0, display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px',
+                    fontSize: '13px', fontWeight: 700, borderRadius: '16px', border: `2px solid ${C.border}`,
+                    background: '#F0FBFF', color: C.ocean, cursor: 'pointer', whiteSpace: 'nowrap'
+                  }}>
+                    <Plus size={13} />목표 추가
+                  </button>
                 </div>
               </div>
-              <button onClick={() => navigate('/make')} style={{
-                flexShrink: 0, display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px',
-                fontSize: '14px', fontWeight: 700, borderRadius: '16px', border: `2px solid ${C.border}`,
-                background: '#F0FBFF', color: C.ocean, cursor: 'pointer'
-              }}>
-                <Plus size={13} />추가
-              </button>
             </div>
           </div>
         </Card>

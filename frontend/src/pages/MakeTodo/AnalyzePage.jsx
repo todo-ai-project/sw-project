@@ -35,7 +35,7 @@ function AnalyzePage({ userGoal, isLoading, result, error, onGoToList, onReset }
       padding: '56px 16px 16px', position: 'relative', background: PAGE_BG
     }}>
       <Bubbles n={5} />
-      <div style={{ width: '100%', maxWidth: '850px', position: 'relative', zIndex: 10, animation: 'fadeInUp .4s ease-out' }}>
+      <div style={{ width: '100%', maxWidth: '520px', position: 'relative', zIndex: 10, animation: 'fadeInUp .4s ease-out' }}>
         {isLoading ? (
           <Card>
             <div style={{ padding: '32px', textAlign: 'center' }}>

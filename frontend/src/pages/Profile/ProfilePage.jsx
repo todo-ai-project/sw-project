@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Camera,
   Check,
@@ -52,10 +52,10 @@ const PROFILE_ITEMS = [
   { id: 'color_gold', cat: 'effect', name: '골드 오라', value: 'gold' },
 
   { id: 'expression_normal', cat: 'expression', name: '기본 표정', value: 'normal', free: true },
-  { id: 'expression_wink', cat: 'expression', name: '윙크', value: 'wink' },
   { id: 'expression_smile', cat: 'expression', name: '활짝 웃음', value: 'smile' },
-  { id: 'expression_sleepy', cat: 'expression', name: '졸린 표정', value: 'sleepy' },
+  { id: 'expression_wink', cat: 'expression', name: '윙크', value: 'wink' },
   { id: 'expression_heart', cat: 'expression', name: '하트 눈', value: 'heart' },
+  { id: 'expression_sleepy', cat: 'expression', name: '졸린 표정', value: 'sleepy' },
 ];
 
 const DEFAULT_OWNED_ITEMS = [
@@ -81,26 +81,32 @@ const readLocal = (key, fallback) => {
 
 function ProfilePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { coins } = useCoins();
 
   const initialColor = Number(localStorage.getItem('jellyColor') || 0);
 
   const [selColor, setSelColor] = useState(initialColor);
+  const [pendingColor, setPendingColor] = useState(initialColor);
   const [customizeTab, setCustomizeTab] = useState('color');
   const [savedNotice, setSavedNotice] = useState('');
-  const [tab, setTab] = useState('stat');
+  const [tab, setTab] = useState(location.state?.tab || 'stat');
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [userName, setUserName] = useState(
     localStorage.getItem('userName') || '사용자',
   );
-  const [photoOpen, setPhotoOpen] = useState(false);
+  const [photos, setPhotos] = useState(() => readLocal('todoongsilPhotos', []));
   const [owned, setOwned] = useState(() =>
     readLocal('todoongsilOwnedItems', DEFAULT_OWNED_ITEMS),
   );
   const [outfit, setOutfit] = useState(() =>
     readLocal('todoongsilOutfit', DEFAULT_OUTFIT),
   );
+  const [pendingOutfit, setPendingOutfit] = useState(() =>
+    readLocal('todoongsilOutfit', DEFAULT_OUTFIT),
+  );
+  const hasChanges = pendingColor !== selColor || JSON.stringify(pendingOutfit) !== JSON.stringify(outfit);
 
   const userEmail = localStorage.getItem('userEmail') || '';
   const [completedGoals, setCompletedGoals] = useState(0);
@@ -123,6 +129,7 @@ function ProfilePage() {
           };
 
           setOutfit(serverOutfit);
+          setPendingOutfit(serverOutfit);
           localStorage.setItem(
             'todoongsilOutfit',
             JSON.stringify(serverOutfit),
@@ -146,7 +153,7 @@ function ProfilePage() {
           });
         }
       } catch (error) {
-        console.error(error);
+        if (error.message !== 'AUTH_REQUIRED') console.error(error);
       }
     }
 
@@ -154,12 +161,14 @@ function ProfilePage() {
       try {
         const [goals, todos] = await Promise.all([getGoals(), getTodos()]);
         setCompletedGoals(goals.filter((goal) => goal.completed).length);
-        setTotalTodos(todos.length);
+        const goalIds = new Set(goals.map((g) => g.id));
+        const activeTodos = todos.filter((t) => goalIds.has(t.goalId || t.goalID));
+        setTotalTodos(activeTodos.length);
         setCompletedTodos(
-          todos.filter((todo) => todo.completed ?? todo.isDone).length,
+          activeTodos.filter((todo) => todo.completed ?? todo.isDone).length,
         );
       } catch (error) {
-        console.error(error);
+        if (error.message !== 'AUTH_REQUIRED') console.error(error);
       }
     }
 
@@ -214,21 +223,20 @@ function ProfilePage() {
     window.setTimeout(() => setSavedNotice(''), 1800);
   };
 
-  const applyColor = (index) => {
-    setSelColor(index);
-    localStorage.setItem('jellyColor', String(index));
-    showSavedNotice('색상이 적용되었습니다!');
+  const previewColor = (index) => {
+    setPendingColor(index);
   };
 
-  const applyItem = (item) => {
-    const next = {
-      ...outfit,
-      [item.cat]: item.value,
-    };
+  const previewItem = (item) => {
+    setPendingOutfit((cur) => ({ ...cur, [item.cat]: item.value }));
+  };
 
-    setOutfit(next);
-    localStorage.setItem('todoongsilOutfit', JSON.stringify(next));
-    showSavedNotice(`${item.name} 아이템이 적용되었습니다!`);
+  const saveCustomize = () => {
+    setSelColor(pendingColor);
+    localStorage.setItem('jellyColor', String(pendingColor));
+    setOutfit(pendingOutfit);
+    localStorage.setItem('todoongsilOutfit', JSON.stringify(pendingOutfit));
+    showSavedNotice('저장되었습니다!');
   };
 
   const ownedItemsForTab = PROFILE_ITEMS.filter(
@@ -272,17 +280,15 @@ function ProfilePage() {
           display: grid;
           grid-template-columns: 340px minmax(0, 1fr);
           gap: 20px;
-          align-items: stretch;
+          align-items: start;
         }
 
         .profile-card-shell {
           min-width: 0;
-          height: 100%;
         }
 
         .profile-card-shell > div {
           box-sizing: border-box;
-          height: 100%;
         }
 
         .profile-left-content {
@@ -567,10 +573,14 @@ function ProfilePage() {
 
         .photo-empty-state p {
           max-width: 360px;
-          margin: 0 0 20px;
+          margin: 0;
           color: ${C.muted};
           font-size: 13px;
           line-height: 1.6;
+        }
+
+        .photo-empty-state p:last-of-type {
+          margin-bottom: 20px;
         }
 
         @media (max-width: 900px) {
@@ -616,91 +626,6 @@ function ProfilePage() {
         }
       `}</style>
 
-      {photoOpen && (
-        <div
-          onClick={() => setPhotoOpen(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 60,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 16,
-            background: 'rgba(12,74,110,.28)',
-            backdropFilter: 'blur(6px)',
-          }}
-        >
-          <div
-            onClick={(event) => event.stopPropagation()}
-            style={{
-              width: '100%',
-              maxWidth: 390,
-              padding: 24,
-              borderRadius: 24,
-              background: '#fff',
-              boxShadow: '0 24px 70px rgba(14, 116, 144, 0.18)',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: 14,
-              }}
-            >
-              <h3 style={{ margin: 0, color: C.deep }}>
-                내 해파리 사진{' '}
-                <Camera
-                  size={16}
-                  style={{ display: 'inline', verticalAlign: 'middle' }}
-                />
-              </h3>
-              <button
-                type="button"
-                aria-label="사진 촬영 창 닫기"
-                onClick={() => setPhotoOpen(false)}
-                style={{
-                  border: 0,
-                  background: 'none',
-                  cursor: 'pointer',
-                  color: C.muted,
-                }}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div
-              style={{
-                minHeight: 210,
-                borderRadius: 18,
-                background: 'linear-gradient(180deg,#E0F7FF,#F0F8FF)',
-                border: `2px solid ${C.border}`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Jelly colorIndex={selColor} size={1.55} float {...outfit} />
-            </div>
-
-            <div style={{ marginTop: 16 }}>
-              <PrimaryBtn
-                onClick={() => {
-                  alert('사진첩에 저장했어요!');
-                  setPhotoOpen(false);
-                }}
-              >
-                <Camera size={15} />
-                찰칵!
-              </PrimaryBtn>
-            </div>
-          </div>
-        </div>
-      )}
-
       <main className="profile-container">
         <header className="profile-page-title">
           <h1>내 프로필</h1>
@@ -712,7 +637,7 @@ function ProfilePage() {
             <Card>
             <section className="profile-left-content">
               <div className="profile-preview">
-                <Jelly colorIndex={selColor} size={1.5} float {...outfit} />
+                <Jelly colorIndex={pendingColor} size={1.5} float {...pendingOutfit} />
               </div>
 
               <div className="profile-user-area">
@@ -824,7 +749,7 @@ function ProfilePage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPhotoOpen(true)}
+                  onClick={() => navigate('/social')}
                   className="profile-action-button"
                   style={{ background: GRAD, color: '#fff' }}
                 >
@@ -838,7 +763,7 @@ function ProfilePage() {
               <div className="profile-section-heading">
                 <div>
                   <h3>해파리 꾸미기</h3>
-                  <p>보유 중인 아이템을 선택하면 위 해파리에 바로 적용돼요.</p>
+                  <p>아이템을 선택하고 저장하기를 눌러 적용하세요.</p>
                 </div>
               </div>
 
@@ -868,13 +793,13 @@ function ProfilePage() {
               {customizeTab === 'color' ? (
                 <div className="jelly-color-grid">
                   {JELLY_COLORS.map((color, index) => {
-                    const isSelected = selColor === index;
+                    const isSelected = pendingColor === index;
 
                     return (
                       <button
                         type="button"
                         key={color.name}
-                        onClick={() => applyColor(index)}
+                        onClick={() => previewColor(index)}
                         className="jelly-color-button"
                         aria-pressed={isSelected}
                         style={{
@@ -907,13 +832,13 @@ function ProfilePage() {
               ) : (
                 <div className="owned-item-grid">
                   {ownedItemsForTab.map((item) => {
-                    const isSelected = outfit[item.cat] === item.value;
+                    const isSelected = pendingOutfit[item.cat] === item.value;
 
                     return (
                       <button
                         type="button"
                         key={item.id}
-                        onClick={() => applyItem(item)}
+                        onClick={() => previewItem(item)}
                         className="owned-item-button"
                         aria-pressed={isSelected}
                         style={{
@@ -956,6 +881,27 @@ function ProfilePage() {
                   })}
                 </div>
               )}
+
+              <button
+                type="button"
+                disabled={!hasChanges}
+                onClick={saveCustomize}
+                style={{
+                  width: '100%',
+                  marginTop: 14,
+                  padding: 12,
+                  border: 0,
+                  borderRadius: 14,
+                  background: hasChanges ? GRAD : '#E2E8F0',
+                  color: hasChanges ? '#fff' : '#A0AEC0',
+                  fontSize: 14,
+                  fontWeight: 900,
+                  cursor: hasChanges ? 'pointer' : 'default',
+                }}
+              >
+                <Save size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 5 }} />
+                저장하기
+              </button>
 
               {savedNotice && (
                 <p
@@ -1054,7 +1000,7 @@ function ProfilePage() {
                             fontWeight: 900,
                           }}
                         >
-                          할 일 완료율
+                          전체 진행률
                         </p>
                         <p
                           style={{
@@ -1080,7 +1026,7 @@ function ProfilePage() {
                     <div
                       className="progress-track"
                       role="progressbar"
-                      aria-label="할 일 완료율"
+                      aria-label="전체 진행률"
                       aria-valuemin="0"
                       aria-valuemax="100"
                       aria-valuenow={todoRate}
@@ -1095,20 +1041,39 @@ function ProfilePage() {
               )}
 
               {tab === 'photo' && (
-                <div className="photo-empty-state">
-                  <Sparkles size={32} color={C.ocean} />
-                  <h3>해파리 사진첩</h3>
-                  <p>
-                    지금 꾸민 해파리의 모습을 사진으로 남겨보세요. 촬영한 사진은
-                    이 공간에서 모아볼 수 있어요.
-                  </p>
-                  <div style={{ width: '100%', maxWidth: 250 }}>
-                    <PrimaryBtn onClick={() => setPhotoOpen(true)}>
-                      <Camera size={15} />
-                      새 사진 찍기
-                    </PrimaryBtn>
+                photos.length === 0 ? (
+                  <div className="photo-empty-state">
+                    <Sparkles size={32} color={C.ocean} />
+                    <h3>해파리 사진첩</h3>
+                    <p>지금 꾸민 해파리의 모습을 사진으로 남겨보세요.</p>
+                    <p>촬영한 사진은 이 공간에서 모아볼 수 있어요.</p>
                   </div>
-                </div>
+                ) : (
+                  <div style={{ padding: 4 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
+                      {photos.map((p) => (
+                        <div key={p.id} style={{ borderRadius: 18, overflow: 'hidden', border: `2px solid ${C.border}`, background: '#fff', position: 'relative' }}>
+                          <button onClick={() => { if (!confirm('이 사진을 삭제할까요?')) return; const next = photos.filter(ph => ph.id !== p.id); setPhotos(next); localStorage.setItem('todoongsilPhotos', JSON.stringify(next)); }} style={{ position: 'absolute', top: 8, right: 8, zIndex: 2, width: 28, height: 28, borderRadius: 8, border: 0, background: 'rgba(0,0,0,.35)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <X size={14} />
+                          </button>
+                          <div style={{ height: 150, position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: 14, background: p.bg ? 'none' : 'linear-gradient(180deg,#E0F7FF,#F0F8FF)' }}>
+                            {p.bg && <img src={p.bg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
+                            <div style={{ position: 'relative', marginRight: -10 }}><Jelly colorIndex={p.me.colorIndex} size={0.9} {...(p.me.outfit || {})} /></div>
+                            {p.friend && <div style={{ position: 'relative', marginLeft: -10 }}><Jelly colorIndex={p.friend.colorIndex} size={0.9} /></div>}
+                          </div>
+                          <div style={{ padding: '10px 12px' }}>
+                            <p style={{ fontSize: 12, fontWeight: 800, color: C.deep, margin: 0 }}>
+                              {p.friend ? `${p.friend.name}와(과) 함께` : '내 해파리'}
+                            </p>
+                            <p style={{ fontSize: 11, color: C.muted, margin: '3px 0 0' }}>
+                              {p.roomName ? `${p.roomName} · ` : ''}{new Date(p.date).toLocaleDateString('ko-KR')}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
               )}
             </section>
             </Card>

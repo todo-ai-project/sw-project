@@ -1,6 +1,8 @@
 const { createGoalWithMandalart, goalStore } = require('../services/goalService');
+const FirestoreService = require('../services/firestoreService');
 const coinService = require('../services/coinService');
 const { GOAL_COMPLETE_COINS } = require('../constants/coins');
+const todoStore = new FirestoreService('todos');
 
 async function createGoal(req, res, next) {
   try {
@@ -67,6 +69,9 @@ async function toggleGoal(req, res, next) {
 
 async function deleteGoal(req, res, next) {
   try {
+    const todosSnapshot = await todoStore.getAllByField('goalId', req.params.id);
+    const deletePromises = todosSnapshot.map((t) => todoStore.delete(t.id));
+    await Promise.all(deletePromises);
     await goalStore.delete(req.params.id);
     res.status(204).send();
   } catch (err) {

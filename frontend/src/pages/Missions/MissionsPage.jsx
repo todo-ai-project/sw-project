@@ -1,8 +1,18 @@
 import { useNavigate } from 'react-router-dom';
-import { Check, Coins, Trophy } from 'lucide-react';
+import { Check, Coins, Trophy, CalendarCheck, DoorOpen, UsersRound, Camera, CircleCheckBig, Target } from 'lucide-react';
 import Card from '../Auth/components/Card';
 import { C, GRAD, PAGE_BG } from '../Auth/components/tokens';
 import { useMissions } from '../../context/MissionContext';
+
+const ICON_COLOR = '#0EA5E9';
+const MISSION_ICONS = {
+  'attendance': <CalendarCheck size={26} color={ICON_COLOR} />,
+  'enter-room': <DoorOpen size={26} color={ICON_COLOR} />,
+  'team-complete': <UsersRound size={26} color={ICON_COLOR} />,
+  'room-photo': <Camera size={26} color={ICON_COLOR} />,
+  'todo-done': <CircleCheckBig size={26} color={ICON_COLOR} />,
+  'goal-complete': <Target size={26} color={ICON_COLOR} />,
+};
 
 export default function MissionsPage() {
   const navigate = useNavigate();
@@ -26,8 +36,8 @@ export default function MissionsPage() {
           {missions.map(m => (
             <Card key={m.id}>
               <div style={{ padding: 18, display: 'flex', alignItems: 'center', gap: 15 }}>
-                <div style={{ width: 54, height: 54, borderRadius: 18, background: '#E0F7FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0 }}>
-                  {m.emoji}
+                <div style={{ width: 54, height: 54, borderRadius: 18, background: '#E0F7FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  {MISSION_ICONS[m.iconType] || <Trophy size={26} color={C.ocean} />}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 3, flexWrap: 'wrap' }}>

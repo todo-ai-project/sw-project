@@ -3,16 +3,34 @@ const characterStore = new FirestoreService('characters');
 const coinService = require('../services/coinService');
 
 const ITEM_CATALOG = {
-  hat_partyhat: { type: 'hat', value: 'partyhat', price: 50 },
-  hat_crown: { type: 'hat', value: 'crown', price: 150 },
-  accessory_scarf: { type: 'accessory', value: 'scarf', price: 80 },
-  color_gold: { type: 'color', value: 'gold', price: 200 },
+  hat_ribbon:    { type: 'hat', value: 'ribbon', price: 50 },
+  hat_bunny:     { type: 'hat', value: 'bunny', price: 70 },
+  hat_cat:       { type: 'hat', value: 'cat', price: 90 },
+  hat_flower:    { type: 'hat', value: 'flower', price: 100 },
+  hat_halo:      { type: 'hat', value: 'halo', price: 120 },
+  hat_crown:     { type: 'hat', value: 'crown', price: 150 },
+
+  effect_bubbles:  { type: 'effect', value: 'bubbles', price: 35 },
+  effect_sparkles: { type: 'effect', value: 'sparkles', price: 60 },
+  effect_flowers:  { type: 'effect', value: 'flowers', price: 80 },
+  color_gold:      { type: 'effect', value: 'gold', price: 200 },
+
+  expression_smile:  { type: 'expression', value: 'smile', price: 30 },
+  expression_wink:   { type: 'expression', value: 'wink', price: 20 },
+  expression_heart:  { type: 'expression', value: 'heart', price: 35 },
+  expression_sleepy: { type: 'expression', value: 'sleepy', price: 45 },
+
+  bg_cave:  { type: 'background', value: 'cave', price: 40 },
+  bg_coral: { type: 'background', value: 'coral', price: 60 },
+  bg_beach: { type: 'background', value: 'beach', price: 80 },
+  bg_ring:  { type: 'background', value: 'ring', price: 100 },
+  bg_shell: { type: 'background', value: 'shell', price: 120 },
 };
 
 const DEFAULT_CHARACTER = {
-  accessory: '',
-  color: '',
   hat: '',
+  effect: '',
+  expression: 'normal',
   ownedItems: [],
 };
 
@@ -33,15 +51,13 @@ async function getMyCharacter(req, res, next) {
 
 async function updateCharacter(req, res, next) {
   try {
+    const { hat, effect, expression } = req.body;
     const character = await getOrCreateCharacter(req.user.uid);
-
     const updated = await characterStore.update(req.user.uid, {
-      accessory: req.body.accessory ?? character.accessory,
-      color: req.body.color ?? character.color,
-      hat: req.body.hat ?? character.hat,
-      ownedItems: req.body.ownedItems ?? character.ownedItems,
+      hat: hat ?? character.hat,
+      effect: effect ?? character.effect,
+      expression: expression ?? character.expression,
     });
-
     res.json(updated);
   } catch (err) {
     next(err);
@@ -60,37 +76,23 @@ async function purchaseItem(req, res, next) {
     const character = await getOrCreateCharacter(req.user.uid);
 
     if ((character.ownedItems || []).includes(itemId)) {
-      const updated = await characterStore.update(req.user.uid, {
-        [item.type]: item.value,
-      });
-
       return res.json({
-        character: updated,
+        character,
         coins: await coinService.getCoins(req.user.uid),
+        alreadyOwned: true,
       });
     }
 
-    const remainingCoins = await coinService.spendCoins(
-      req.user.uid,
-      item.price
-    );
+    const remainingCoins = await coinService.spendCoins(req.user.uid, item.price);
 
     const updated = await characterStore.update(req.user.uid, {
-      [item.type]: item.value,
       ownedItems: [...(character.ownedItems || []), itemId],
     });
 
-    res.json({
-      character: updated,
-      coins: remainingCoins,
-    });
+    res.json({ character: updated, coins: remainingCoins });
   } catch (err) {
     next(err);
   }
 }
 
-module.exports = {
-  getMyCharacter,
-  updateCharacter,
-  purchaseItem,
-};
+module.exports = { getMyCharacter, updateCharacter, purchaseItem };

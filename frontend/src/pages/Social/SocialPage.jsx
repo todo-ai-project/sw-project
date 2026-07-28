@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Users, Heart, Check, LogOut, MessageCircle, X, LogIn, Waves } from 'lucide-react';
+import { Plus, Users, Heart, Check, LogOut, MessageCircle, X, LogIn } from 'lucide-react';
 import Card from '../Auth/components/Card';
 import PrimaryBtn from '../Auth/components/PrimaryBtn';
 import GhostBtn from '../Auth/components/GhostBtn';
@@ -13,9 +13,7 @@ const STORAGE_KEY = 'todoongsilSocialRooms';
 const JOINED_KEY = 'todoongsilJoinedRooms';
 function readRooms() {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-    const joined = readJoined();
-    return saved.filter(r => joined.has(String(r.id)) && r.members > 0);
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
   } catch {
     return [];
   }
@@ -52,21 +50,24 @@ function SocialPage() {
   useEffect(() => {
     getCrews().then(data => {
       if (!data.length) return;
-      const currentJoined = readJoined();
       setRooms(prev => {
-        const known = new Set(prev.map(room => String(room.id)));
-        const additions = data
-          .filter(room => !known.has(String(room.id)) && currentJoined.has(String(room.id)))
-          .map(room => ({
-            id: String(room.id),
-            name: room.name,
-            goal: room.description || '함께 목표를 달성하는 방',
-            members: 1,
-            progress: 0,
-            emoji: '🌊',
-            likes: 0,
-          }));
-        return [...prev, ...additions].filter(r => r.members > 0);
+        const localMap = new Map(prev.map(r => [String(r.id), r]));
+        const merged = data.map(room => {
+          const id = String(room.id);
+          const local = localMap.get(id);
+          return {
+            id,
+            name: room.name || local?.name || '소셜 방',
+            goal: room.description || local?.goal || '함께 목표를 달성하는 방',
+            members: room.members ?? local?.members ?? 1,
+            progress: local?.progress || 0,
+            emoji: local?.emoji || room.emoji || '🌊',
+            likes: local?.likes || 0,
+          };
+        });
+        const serverIds = new Set(data.map(r => String(r.id)));
+        const localOnly = prev.filter(r => !serverIds.has(String(r.id)) && r.members > 0);
+        return [...merged, ...localOnly];
       });
     }).catch(() => {});
   }, []);

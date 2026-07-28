@@ -2,6 +2,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Target, Users, User, LogOut, Coins, ShoppingBag, Trophy } from 'lucide-react';
 import { C, GRAD } from '../pages/Auth/components/tokens';
 import { useCoins } from '../context/CoinContext';
+import Jelly from '../pages/Auth/components/Jelly';
 
 function Navbar() {
   const navigate = useNavigate();
@@ -33,7 +34,9 @@ function Navbar() {
       }}>
         <button onClick={() => navigate(isLoggedIn ? '/goals' : '/login')}
           style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}>
-          <img src="/jelly/jelly_blue.png" alt="로고" style={{ width: 28, height: 'auto', display: 'inline-block', animation: 'jellyFloat 3s ease-in-out infinite' }} />
+          <div style={{ width: 56, display: 'inline-block', animation: 'jellyFloat 3s ease-in-out infinite' }}>
+            <Jelly colorIndex={0} size={0.5} expression="normal" />
+          </div>
           <span style={{ fontSize: '16px', fontWeight: 800, color: C.deep, fontFamily: "'Nunito', sans-serif" }}>투둥실</span>
         </button>
 
