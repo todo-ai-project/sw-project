@@ -1,94 +1,159 @@
-# 투둥실 (Todoongsil) - Frontend
+<<<<<<< HEAD
+// EvidenceList.module.scss
 
-AI 기반 목표 관리 웹 서비스 프론트엔드
+// Variables
+$primary-color: #5d5dff;
+$text-color: #333;
+$light-gray: #f5f5f5;
+$dark-gray: #666;
+$card-bg-dark: rgba(0, 0, 0, 0.4);
+$blue-border: #007bff;
+$card-min-height: 250px;
 
-## 기술 스택
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
 
-- React 19 + Vite
-- React Router v7
-- Firebase Authentication (Client SDK)
-- Axios (API 통신)
-- Lucide React (아이콘)
+// ... (Header 및 Filter Tabs 스타일 유지)
 
-## 실행 방법
+// --- Evidence Cards Grid Layout ---
+.evidenceGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); 
+    gap: 20px;
+}
 
-```bash
-npm install
-npm run dev
-```
+// --- Card Base Styling ---
+.card {
+    border-radius: 10px;
+    min-height: $card-min-height;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 0;
+    transition: transform 0.2s;
 
-기본 포트: `http://localhost:5173`
+    &:hover {
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    }
+}
 
-## 환경 변수 (.env)
+// --- Media Card (Image/Video) ---
+.mediaCard {
+    background-size: cover;
+    background-position: center;
+    color: white; 
+    
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(to top, $card-bg-dark 0%, transparent 50%);
+        z-index: 1;
+    }
+    
+    .cardContent {
+        padding: 15px;
+        position: relative;
+        z-index: 2;
+    }
+    
+    .cardTitle {
+        margin: 0 0 5px;
+        font-size: 1.2rem;
+    }
 
-```
-VITE_FIREBASE_API_KEY=
-VITE_FIREBASE_AUTH_DOMAIN=
-VITE_FIREBASE_PROJECT_ID=
-VITE_FIREBASE_STORAGE_BUCKET=
-VITE_FIREBASE_MESSAGING_SENDER_ID=
-VITE_FIREBASE_APP_ID=
-```
+    .submitBtn {
+        background: rgba(255, 255, 255, 0.9);
+        border: none;
+    }
+}
 
-## 파일 구조
+// --- Audio/Memo/Document Card (파일 비포함 또는 비-미디어 파일) ---
+.audioCard, .memoCard, .documentCard {
+    background-color: $light-gray;
+    border: 1px solid #ddd;
+    color: $text-color;
+}
 
-```
-frontend/
-├── index.html                          # HTML 엔트리 (Google Fonts 로드)
-├── package.json
-├── vite.config.js
-├── eslint.config.js
-├── public/                             # 정적 파일
-└── src/
-    ├── main.jsx                        # React 엔트리포인트
-    ├── App.jsx                         # 라우터 설정 + 전역 키프레임
-    ├── index.css                       # 전역 CSS
-    ├── firebase.js                     # Firebase Client SDK 초기화
-    │
-    ├── components/                     # 공통 컴포넌트
-    │   └── Navbar.jsx                  # 상단 네비게이션 바 (목표/소셜/프로필 탭)
-    │
-    └── pages/
-        ├── Auth/                       # 인증 관련
-        │   ├── LoginPage.jsx           # 로그인 페이지
-        │   ├── SignupPage.jsx          # 회원가입 페이지
-        │   └── components/             # 공유 UI 컴포넌트
-        │       ├── tokens.js           # 디자인 토큰 (색상, 그라데이션)
-        │       ├── Jelly.jsx           # 해파리 캐릭터
-        │       ├── Bubbles.jsx         # 물방울 애니메이션
-        │       ├── AuthWrap.jsx        # 인증 페이지 래퍼
-        │       ├── Card.jsx            # 글래스모피즘 카드
-        │       ├── Field.jsx           # 입력 필드
-        │       ├── PrimaryBtn.jsx      # 그라데이션 CTA 버튼
-        │       └── GhostBtn.jsx        # 보더 스타일 버튼
-        │
-        ├── TodoList/                   # 목표 관리
-        │   └── TodoList.jsx            # 캐릭터 + 서브골 아코디언 + 할일 체크
-        │
-        ├── MakeTodo/                   # 목표 설정
-        │   ├── MakeTodo.jsx            # AI 목표 입력 페이지
-        │   └── AnalyzePage.jsx         # AI 분석 진행/결과 페이지
-        │
-        ├── Social/                     # 소셜
-        │   └── SocialPage.jsx          # 소셜 방 목록 + 생성
-        │
-        └── Profile/                    # 프로필
-            └── ProfilePage.jsx         # 캐릭터 꾸미기 + 통계/배지 + 사진첩
-```
+// --- Empty Card (빈 카드) ---
+.emptyCard {
+    background-color: $light-gray;
+    border: 1px solid #ddd;
+    box-shadow: none;
+    cursor: pointer; // 클릭 가능성을 암시
+}
 
-## 라우트
+.iconPlaceholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    padding-bottom: 0;
+    flex-grow: 1; // 공간을 채우도록 설정
+    text-align: center;
+    
+    .placeholderTitle {
+        font-size: 1.1rem;
+        font-weight: bold;
+        margin-bottom: 15px;
+    }
 
-| 경로 | 페이지 | 설명 |
-|------|--------|------|
-| `/login` | LoginPage | 로그인 |
-| `/signup` | SignupPage | 회원가입 |
-| `/goals` | TodoList | 목표 관리 (메인) |
-| `/make` | MakeTodo | AI 목표 설정 |
-| `/social` | SocialPage | 소셜 방 |
-| `/profile` | ProfilePage | 프로필 |
+    .audioIcon, .memoIcon, .documentIcon {
+        font-size: 2.5rem;
+        color: $dark-gray;
+    }
+}
 
-## 인증 흐름
+// --- Selected Card Style (Blue Border) ---
+.selectedCard {
+    border: 5px solid $blue-border;
+    padding: 0;
+}
 
-1. 회원가입: Firebase `createUserWithEmailAndPassword` -> `POST /api/auth/signup`
-2. 로그인: Firebase `signInWithEmailAndPassword` -> `POST /api/auth/login`
-3. 이후 API 요청: `Authorization: Bearer <idToken>` 헤더 포함
+// --- Card Content & Button ---
+.cardContent {
+    padding: 15px;
+    
+    p {
+        margin: 2px 0;
+        font-size: 0.85rem;
+    }
+}
+
+.submitBtn {
+    background: white;
+    color: $primary-color;
+    border: 1px solid #ddd;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    align-self: flex-end;
+    margin: 10px;
+    z-index: 3;
+}
+
+// --- Pagination (유지) ---
+.pagination {
+    // ... (스타일 유지)
+}
+
+// --- Responsive Adjustments (유지) ---
+@media (max-width: 768px) {
+    .evidenceGrid {
+        grid-template-columns: repeat(2, 1fr); 
+    }
+}
+=======
+# scc
+>>>>>>> 6722ef045707c726e05e56e6609828b375e95db6
