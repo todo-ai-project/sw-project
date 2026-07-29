@@ -25,10 +25,10 @@ const EXPRESSION_IMAGES = {
 };
 
 const EFFECT_IMAGES = {
-  gold: '/assets/effects/eff1.png',
+  sparkles: '/assets/effects/eff1.png',
   bubbles: '/assets/effects/eff2.png',
   flowers: '/assets/effects/eff3.png',
-  sparkles: '/assets/effects/eff4.png',
+  gold: '/assets/effects/eff4.png',
 };
 
 const OVERLAY_STYLE = {
