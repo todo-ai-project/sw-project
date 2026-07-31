@@ -80,7 +80,6 @@ function SocialPage() {
       setJoinTarget(null);
       await fetchRooms();
       refreshCoins();
-      alert('방에 참여했어요!');
     } catch (error) {
       alert('방 참여에 실패했어요. 다시 시도해주세요.');
     }
