@@ -13,13 +13,20 @@ async function getCrews(req, res, next) {
     const crews = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
     const usersSnapshot = await userStore.collection.get();
-    const memberCounts = {};
+    const membersByCrewId = {};
     usersSnapshot.docs.forEach((doc) => {
       const cid = doc.data().crewId;
-      if (cid) memberCounts[cid] = (memberCounts[cid] || 0) + 1;
+      if (cid) {
+        if (!membersByCrewId[cid]) membersByCrewId[cid] = [];
+        membersByCrewId[cid].push(doc.id);
+      }
     });
 
-    const result = crews.map((c) => ({ ...c, members: memberCounts[c.id] || 0 }));
+    const result = crews.map((c) => ({
+      ...c,
+      members: membersByCrewId[c.id]?.length || 0,
+      memberUids: membersByCrewId[c.id] || [],
+    }));
     res.json(result);
   } catch (err) {
     next(err);
@@ -38,12 +45,13 @@ async function getCrewById(req, res, next) {
 
 async function createCrew(req, res, next) {
   try {
-    const { name, description, goalId } = req.body;
+    const { name, description, goalId, emoji } = req.body;
     if (!name) return res.status(400).json({ message: 'name은 필수입니다.' });
 
     const crew = await crewStore.create({
       name,
       description: description || '',
+      emoji: emoji || '🌊',
       ownerId: req.user.uid,
     });
 

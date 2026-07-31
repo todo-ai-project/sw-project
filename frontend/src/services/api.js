@@ -100,9 +100,8 @@ export async function createCrew(payload) {
   return data;
 }
 
-export async function joinCrew(crewId) {
-  requireAuth();
-  const { data } = await api.post(`/crews/${crewId}/join`);
+export async function joinCrew(crewId, goalId) {
+  const { data } = await api.post(`/crews/${crewId}/join`, { goalId });
   return data;
 }
 
