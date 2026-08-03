@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
 import Jelly from '../Auth/components/Jelly';
 import Bubbles from '../Auth/components/Bubbles';
@@ -10,7 +10,7 @@ import AnalyzePage from './AnalyzePage';
 import { createGoal, deleteGoal } from '../../services/api';
 import { useMissions } from '../../context/MissionContext';
 
-const EXAMPLES = ['토익 900점 달성', '3개월 안에 5kg 감량', '개발자로 취업하기', '매일 책 30분 읽기'];
+const EXAMPLES = ['토익 900점 달성', '5kg 감량', '개발자로 취업하기', '매일 책 30분 읽기'];
 const DEADLINE_OPTIONS = [
   { label: '1주', days: 7 },
   { label: '2주', days: 14 },
@@ -19,12 +19,22 @@ const DEADLINE_OPTIONS = [
   { label: '3개월', days: 90 },
   { label: '6개월', days: 180 },
 ];
+const UNIT_TO_DAYS = { 일: 1, 주: 7, 개월: 30 };
 
 function MakeTodo() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { completeMission } = useMissions();
+
+  // 소셜 방 참여 모달에서 "새 목표 만들러 가기"로 넘어온 경우, 방 id를 들고 있다가
+  // 목표 생성이 끝나면 그 방으로 다시 돌아가서 참여 모달을 자동으로 열어줌
+  const fromRoom = location.state?.fromRoom || null;
+
   const [goal, setGoal] = useState('');
   const [deadlineIdx, setDeadlineIdx] = useState(2);
+  const [isCustomDeadline, setIsCustomDeadline] = useState(false);
+  const [customValue, setCustomValue] = useState('');
+  const [customUnit, setCustomUnit] = useState('일');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -33,12 +43,25 @@ function MakeTodo() {
 
   const handleSubmit = async () => {
     if (!goal.trim()) return;
+
+    // 기타(직접 입력) 기한 유효성 검사
+    let dl;
+    if (isCustomDeadline) {
+      const num = Number(customValue);
+      if (!num || num <= 0) {
+        setError('기한을 올바르게 입력해주세요.');
+        return;
+      }
+      dl = { label: `${customValue}${customUnit}`, days: num * UNIT_TO_DAYS[customUnit] };
+    } else {
+      dl = DEADLINE_OPTIONS[deadlineIdx];
+    }
+
     setIsAnalyzing(true);
     setIsLoading(true);
     setResult(null);
     setError('');
 
-    const dl = DEADLINE_OPTIONS[deadlineIdx];
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + dl.days);
     const deadlineStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
@@ -57,6 +80,14 @@ function MakeTodo() {
     }
   };
 
+  const handleGoToList = () => {
+    if (fromRoom) {
+      navigate('/social', { state: { openJoinRoomId: fromRoom } });
+    } else {
+      navigate('/goals');
+    }
+  };
+
   if (isAnalyzing) {
     return (
       <AnalyzePage
@@ -64,7 +95,7 @@ function MakeTodo() {
         result={result}
         error={error}
         userGoal={goal}
-        onGoToList={() => navigate('/goals')}
+        onGoToList={handleGoToList}
         onReset={async () => {
           if (createdGoalId) {
             try { await deleteGoal(createdGoalId); } catch {}
@@ -91,7 +122,7 @@ function MakeTodo() {
             어떤 목표를 이루고 싶어요?
           </h1>
           <p style={{ fontSize: '14px', color: C.muted, fontFamily: "'Nunito', sans-serif", margin: 0 }}>
-            막연해도 괜찮아요 — AI 해파리가 도와줄게요
+            {fromRoom ? '이 방에 맞는 목표를 새로 만들어봐요' : '막연해도 괜찮아요 — AI 해파리가 도와줄게요'}
           </p>
         </div>
 
@@ -101,7 +132,7 @@ function MakeTodo() {
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
               rows={3}
-              placeholder="예: 6개월 안에 토익 900점 달성하고 싶어요"
+              placeholder="예: 토익 900점 달성하고 싶어요"
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
               style={{
                 width: '100%', padding: '12px 16px', borderRadius: '16px',
@@ -119,21 +150,65 @@ function MakeTodo() {
               <p style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px', color: C.subtle, fontFamily: "'Nunito', sans-serif" }}>
                 목표 기한
               </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: isCustomDeadline ? '12px' : '16px' }}>
                 {DEADLINE_OPTIONS.map((opt, i) => (
-                  <button key={opt.label} onClick={() => setDeadlineIdx(i)}
+                  <button key={opt.label} onClick={() => { setDeadlineIdx(i); setIsCustomDeadline(false); }}
                     style={{
                       padding: '7px 14px', fontSize: '13px', fontWeight: 700,
                       borderRadius: '999px', cursor: 'pointer',
                       fontFamily: "'Nunito', sans-serif", transition: 'all 0.2s',
-                      ...(deadlineIdx === i
+                      ...(!isCustomDeadline && deadlineIdx === i
                         ? { background: C.ocean, color: '#fff', border: '1.5px solid transparent' }
                         : { background: '#E0F7FF', color: C.ocean, border: `1.5px solid ${C.border}` })
                     }}>
                     {opt.label}
                   </button>
                 ))}
+                <button onClick={() => setIsCustomDeadline(true)}
+                  style={{
+                    padding: '7px 14px', fontSize: '13px', fontWeight: 700,
+                    borderRadius: '999px', cursor: 'pointer',
+                    fontFamily: "'Nunito', sans-serif", transition: 'all 0.2s',
+                    ...(isCustomDeadline
+                      ? { background: C.ocean, color: '#fff', border: '1.5px solid transparent' }
+                      : { background: '#E0F7FF', color: C.ocean, border: `1.5px solid ${C.border}` })
+                  }}>
+                  기타
+                </button>
               </div>
+
+              {isCustomDeadline && (
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <input
+                    type="number"
+                    min="1"
+                    value={customValue}
+                    onChange={(e) => setCustomValue(e.target.value)}
+                    placeholder="숫자 입력"
+                    style={{
+                      width: '100px', padding: '8px 12px', borderRadius: '12px',
+                      fontSize: '13px', outline: 'none',
+                      background: '#F0FBFF', border: `1.5px solid ${C.border}`,
+                      color: C.deep, fontFamily: "'Nunito', sans-serif", boxSizing: 'border-box'
+                    }}
+                  />
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {['일', '주', '개월'].map((u) => (
+                      <button key={u} onClick={() => setCustomUnit(u)}
+                        style={{
+                          padding: '7px 12px', fontSize: '13px', fontWeight: 700,
+                          borderRadius: '999px', cursor: 'pointer',
+                          fontFamily: "'Nunito', sans-serif", transition: 'all 0.2s',
+                          ...(customUnit === u
+                            ? { background: C.ocean, color: '#fff', border: '1.5px solid transparent' }
+                            : { background: '#E0F7FF', color: C.ocean, border: `1.5px solid ${C.border}` })
+                        }}>
+                        {u}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div style={{ marginBottom: '20px' }}>
@@ -156,6 +231,12 @@ function MakeTodo() {
                 ))}
               </div>
             </div>
+
+            {error && (
+              <p style={{ color: '#F43F5E', fontSize: '13px', fontWeight: 600, marginBottom: '12px', fontFamily: "'Nunito', sans-serif" }}>
+                {error}
+              </p>
+            )}
 
             <PrimaryBtn onClick={handleSubmit} disabled={!goal.trim()}>
               <Sparkles size={15} />

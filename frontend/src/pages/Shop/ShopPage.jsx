@@ -110,7 +110,7 @@ export default function ShopPage() {
 
   return (
     <div style={{ minHeight: '100vh', paddingTop: 56, background: PAGE_BG }}>
-      <div style={{ maxWidth: 920, margin: '0 auto', padding: '28px 16px 48px' }}>
+      <div style={{ maxWidth: 960, margin: '0 auto', padding: '28px 16px 48px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
           <div>
             <h1 style={{ fontSize: 24, fontWeight: 900, color: C.deep, margin: 0 }}>해파리 상점</h1>

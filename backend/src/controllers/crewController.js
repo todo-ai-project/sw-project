@@ -4,6 +4,7 @@ const coinService = require('../services/coinService');
 const { ROOM_ENTRY_COINS, PHOTO_COINS } = require('../constants/coins');
 
 const crewStore = new FirestoreService('crews');
+const crewMemberStore = new FirestoreService('crewMembers'); // {uid, crewId, goalId} - 문서 id: `${uid}_${crewId}`
 const userStore = new FirestoreService('users');
 const todoStore = new FirestoreService('todos');
 
@@ -12,14 +13,29 @@ async function getCrews(req, res, next) {
     const snapshot = await crewStore.collection.get();
     const crews = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
-    const usersSnapshot = await userStore.collection.get();
-    const memberCounts = {};
-    usersSnapshot.docs.forEach((doc) => {
-      const cid = doc.data().crewId;
-      if (cid) memberCounts[cid] = (memberCounts[cid] || 0) + 1;
+    const memberSnapshot = await crewMemberStore.collection.get();
+    const membersByCrewId = {};
+    memberSnapshot.docs.forEach((doc) => {
+      const { crewId, uid } = doc.data();
+      if (!crewId || !uid) return;
+      if (!membersByCrewId[crewId]) membersByCrewId[crewId] = [];
+      membersByCrewId[crewId].push(uid);
     });
 
-    const result = crews.map((c) => ({ ...c, members: memberCounts[c.id] || 0 }));
+    const emptyCrewIds = crews
+      .filter((c) => !membersByCrewId[c.id]?.length)
+      .map((c) => c.id);
+    if (emptyCrewIds.length) {
+      await Promise.all(emptyCrewIds.map((id) => crewStore.delete(id)));
+    }
+
+    const result = crews
+      .filter((c) => !emptyCrewIds.includes(c.id))
+      .map((c) => ({
+        ...c,
+        members: membersByCrewId[c.id].length,
+        memberUids: membersByCrewId[c.id],
+      }));
     res.json(result);
   } catch (err) {
     next(err);
@@ -38,18 +54,22 @@ async function getCrewById(req, res, next) {
 
 async function createCrew(req, res, next) {
   try {
-    const { name, description, goalId } = req.body;
+    const { name, description, goalId, emoji } = req.body;
     if (!name) return res.status(400).json({ message: 'name은 필수입니다.' });
 
     const crew = await crewStore.create({
       name,
       description: description || '',
+      emoji: emoji || '🌊',
       ownerId: req.user.uid,
     });
 
-    const userUpdate = { crewId: crew.id };
-    if (goalId) userUpdate.crewGoalId = goalId;
-    await userStore.update(req.user.uid, userUpdate);
+    // 방을 만든 사람도 자동으로 멤버로 등록 (goalId를 같이 보냈다면 바로 반영)
+    await crewMemberStore.createWithId(`${req.user.uid}_${crew.id}`, {
+      uid: req.user.uid,
+      crewId: crew.id,
+      goalId: goalId || '',
+    });
 
     res.status(201).json(crew);
   } catch (err) {
@@ -57,7 +77,7 @@ async function createCrew(req, res, next) {
   }
 }
 
-// 크루 가입 - 함께할 목표(goalId)를 반드시 선택
+// 크루 가입 - 함께할 목표(goalId)를 반드시 선택. 한 사람이 여러 방에 동시 가입 가능.
 async function joinCrew(req, res, next) {
   try {
     const crew = await crewStore.getById(req.params.id);
@@ -66,22 +86,36 @@ async function joinCrew(req, res, next) {
     const { goalId } = req.body;
     if (!goalId) return res.status(400).json({ message: '함께할 목표(goalId)를 선택해주세요.' });
 
-    const user = await userStore.update(req.user.uid, {
+    const member = await crewMemberStore.createWithId(`${req.user.uid}_${req.params.id}`, {
+      uid: req.user.uid,
       crewId: req.params.id,
-      crewGoalId: goalId,
+      goalId,
     });
 
-    const claimed = await dailyRewardService.claimOnce(req.user.uid, 'roomEntry', ROOM_ENTRY_COINS);
-    res.json({ ...user, coinsEarned: claimed ? ROOM_ENTRY_COINS : 0 });
+    // 방마다 하루 1회 입장 보너스 (방 단위로 키를 나눔)
+    const claimed = await dailyRewardService.claimOnce(
+      req.user.uid,
+      `roomEntry_${req.params.id}`,
+      ROOM_ENTRY_COINS
+    );
+    res.json({ ...member, coinsEarned: claimed ? ROOM_ENTRY_COINS : 0 });
   } catch (err) {
     next(err);
   }
 }
 
+// 특정 방에서만 탈퇴 (다른 참여 중인 방은 그대로 유지됨)
+// 탈퇴 후 남은 멤버가 0명이면 방을 자동 삭제
 async function leaveCrew(req, res, next) {
   try {
-    const user = await userStore.update(req.user.uid, { crewId: '', crewGoalId: '' });
-    res.json(user);
+    await crewMemberStore.delete(`${req.user.uid}_${req.params.id}`);
+
+    const remaining = await crewMemberStore.getAllByField('crewId', req.params.id);
+    if (remaining.length === 0) {
+      await crewStore.delete(req.params.id);
+    }
+
+    res.json({ crewId: req.params.id, left: true, deleted: remaining.length === 0 });
   } catch (err) {
     next(err);
   }
@@ -89,27 +123,38 @@ async function leaveCrew(req, res, next) {
 
 async function getCrewMembers(req, res, next) {
   try {
-    const members = await userStore.getAllByField('crewId', req.params.id);
-    res.json(members);
+    const members = await crewMemberStore.getAllByField('crewId', req.params.id);
+    const withProfiles = await Promise.all(
+      members.map(async (m) => {
+        const user = await userStore.getById(m.uid);
+        return {
+          uid: m.uid,
+          goalId: m.goalId,
+          nickname: user?.nickname || user?.email || '익명',
+        };
+      })
+    );
+    res.json(withProfiles);
   } catch (err) {
     next(err);
   }
 }
 
-// 크루원들이 각자 고른 목표의 할 일(=오늘 할 일) 조회
+// 크루원들이 각자 고른 목표의 할 일 조회
 async function getCrewTodayTodos(req, res, next) {
   try {
-    const members = await userStore.getAllByField('crewId', req.params.id);
+    const members = await crewMemberStore.getAllByField('crewId', req.params.id);
 
     const result = [];
     for (const member of members) {
-      if (!member.crewGoalId) {
-        result.push({ uid: member.id, nickname: member.nickname || member.email, todos: [] });
+      const user = await userStore.getById(member.uid);
+      if (!member.goalId) {
+        result.push({ uid: member.uid, nickname: user?.nickname || user?.email, todos: [] });
         continue;
       }
-      const todos = await todoStore.getAllByField('goalId', member.crewGoalId);
+      const todos = await todoStore.getAllByField('goalId', member.goalId);
       todos.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-      result.push({ uid: member.id, nickname: member.nickname || member.email, goalId: member.crewGoalId, todos });
+      result.push({ uid: member.uid, nickname: user?.nickname || user?.email, goalId: member.goalId, todos });
     }
 
     res.json(result);

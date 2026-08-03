@@ -6,10 +6,10 @@ const todoStore = new FirestoreService('todos');
 
 async function createGoal(req, res, next) {
   try {
-    const { goalText } = req.body;
+    const { goalText, deadline } = req.body;
     if (!goalText) return res.status(400).json({ message: 'goalText는 필수입니다.' });
 
-    const result = await createGoalWithMandalart(req.user.uid, goalText);
+    const result = await createGoalWithMandalart(req.user.uid, goalText, deadline);
     res.status(201).json(result);
   } catch (err) {
     next(err);

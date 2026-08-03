@@ -25,7 +25,7 @@ async function getMyTodos(req, res, next) {
 
 async function createTodo(req, res, next) {
   try {
-    const { goalId, title, order } = req.body;
+    const { goalId, title, order, dueDate } = req.body;
     if (!goalId || !title) {
       return res.status(400).json({ message: 'goalId, title은 필수입니다.' });
     }
@@ -35,6 +35,7 @@ async function createTodo(req, res, next) {
       title,
       order: order ?? 0,
       completed: false,
+      dueDate: dueDate || null,
     });
     res.status(201).json(todo);
   } catch (err) {

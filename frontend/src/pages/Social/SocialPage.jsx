@@ -1,131 +1,115 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus, Users, Heart, Check, LogOut, MessageCircle, X, LogIn } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Plus, Users, Heart, LogOut, MessageCircle, X, LogIn } from 'lucide-react';
 import Card from '../Auth/components/Card';
 import PrimaryBtn from '../Auth/components/PrimaryBtn';
 import GhostBtn from '../Auth/components/GhostBtn';
 import { C, GRAD, PAGE_BG } from '../Auth/components/tokens';
-import { createCrew, getCrews, joinCrew, leaveCrew } from '../../services/api';
+import { createCrew, getCrews, getGoals, joinCrew, leaveCrew } from '../../services/api';
 import { useCoins } from '../../context/CoinContext';
+import { getAuth } from 'firebase/auth';
 
 const ROOM_EMOJIS = ['💼', '🏃', '💻', '🗣️', '📚', '🌅', '🎨', '🎵', '🍎', '✈️', '🎯', '🌱'];
-const STORAGE_KEY = 'todoongsilSocialRooms';
-const JOINED_KEY = 'todoongsilJoinedRooms';
-function readRooms() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-  } catch {
-    return [];
-  }
-}
-
-function readJoined() {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(JOINED_KEY)) || []);
-  } catch {
-    return new Set();
-  }
-}
 
 function SocialPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { refreshCoins } = useCoins();
-  const [rooms, setRooms] = useState(readRooms);
+  const [rooms, setRooms] = useState([]);
   const [liked, setLiked] = useState(new Set());
-  const [joined, setJoined] = useState(readJoined);
   const [filter, setFilter] = useState('all');
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
   const [newGoal, setNewGoal] = useState('');
   const [newEmoji, setNewEmoji] = useState('🎯');
+  const [joinTarget, setJoinTarget] = useState(null);
+  const [myGoals, setMyGoals] = useState([]);
+  const [autoOpenHandled, setAutoOpenHandled] = useState(false);
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(rooms));
-  }, [rooms]);
+  const myUid = getAuth().currentUser?.uid;
 
-  useEffect(() => {
-    localStorage.setItem(JOINED_KEY, JSON.stringify([...joined]));
-  }, [joined]);
+  const fetchRooms = async () => {
+    try {
+      const data = await getCrews();
+      setRooms(data.map(room => ({
+        id: String(room.id),
+        name: room.name || '소셜 방',
+        goal: room.description || '함께 목표를 달성하는 방',
+        members: room.members ?? 0,
+        emoji: room.emoji || '🌊',
+        memberUids: room.memberUids || [],
+      })));
+    } catch (e) {
+      console.error('방 목록 로드 실패:', e);
+    }
+  };
 
+  useEffect(() => { fetchRooms(); }, []);
+
+  // MakeTodo에서 "새 목표 만들러 가기"로 갔다가 돌아온 경우, 원래 참여하려던 방의 모달을 자동으로 다시 열어줌
   useEffect(() => {
-    getCrews().then(data => {
-      if (!data.length) return;
-      setRooms(prev => {
-        const localMap = new Map(prev.map(r => [String(r.id), r]));
-        const merged = data.map(room => {
-          const id = String(room.id);
-          const local = localMap.get(id);
-          return {
-            id,
-            name: room.name || local?.name || '소셜 방',
-            goal: room.description || local?.goal || '함께 목표를 달성하는 방',
-            members: room.members ?? local?.members ?? 1,
-            progress: local?.progress || 0,
-            emoji: local?.emoji || room.emoji || '🌊',
-            likes: local?.likes || 0,
-          };
-        });
-        const serverIds = new Set(data.map(r => String(r.id)));
-        const localOnly = prev.filter(r => !serverIds.has(String(r.id)) && r.members > 0);
-        return [...merged, ...localOnly];
-      });
-    }).catch(() => {});
-  }, []);
+    const targetRoomId = location.state?.openJoinRoomId;
+    if (!targetRoomId || autoOpenHandled || rooms.length === 0) return;
+    const room = rooms.find(r => String(r.id) === String(targetRoomId));
+    if (room) {
+      openJoinModal(room);
+      setAutoOpenHandled(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rooms, location.state, autoOpenHandled]);
 
   const list = useMemo(() => filter === 'joined'
-    ? rooms.filter(room => joined.has(String(room.id)))
-    : rooms, [filter, rooms, joined]);
+    ? rooms.filter(room => room.memberUids?.includes(myUid))
+    : rooms, [filter, rooms, myUid]);
 
   const create = async () => {
     if (!newName.trim() || !newGoal.trim()) return;
-    let id = String(Date.now());
     try {
-      const created = await createCrew({ name: newName.trim(), description: newGoal.trim() });
-      id = String(created.id || id);
+      await createCrew({ name: newName.trim(), description: newGoal.trim(), emoji: newEmoji });
+      await fetchRooms();
+      setNewName(''); setNewGoal(''); setNewEmoji('🎯'); setShowCreate(false);
     } catch (error) {
-      console.warn('방 생성 서버 연동 실패, 로컬 방으로 생성합니다.', error.message);
+      alert('방 생성에 실패했어요. 다시 시도해주세요.');
     }
-    const room = { id, name: newName.trim(), goal: newGoal.trim(), members: 1, progress: 0, emoji: newEmoji, likes: 0 };
-    setRooms(prev => [room, ...prev]);
-    setJoined(prev => new Set([...prev, id]));
-    refreshCoins();
-    setNewName(''); setNewGoal(''); setNewEmoji('🎯'); setShowCreate(false);
   };
 
-  const handleJoin = async (room) => {
-    const id = String(room.id);
-    if (joined.has(id)) {
-      navigate(`/social/${id}`, { state: { room } });
-      return;
-    }
+  const openJoinModal = async (room) => {
     try {
-      await joinCrew(id);
-    } catch (error) {
-      console.warn('방 가입 서버 연동 실패, 로컬 참여로 처리합니다.', error.message);
+      const goals = await getGoals();
+      setMyGoals(goals);
+      setJoinTarget(room);
+    } catch {
+      alert('목표를 불러오지 못했어요.');
     }
-    setJoined(prev => new Set([...prev, id]));
-    setRooms(prev => prev.map(item => String(item.id) === id ? { ...item, members: item.members + 1 } : item));
-    refreshCoins();
-    alert('방에 참여했어요!');
+  };
+
+  const confirmJoin = async (goalId) => {
+    const id = String(joinTarget.id);
+    try {
+      await joinCrew(id, goalId);
+      setJoinTarget(null);
+      await fetchRooms();
+      refreshCoins();
+    } catch (error) {
+      alert('방 참여에 실패했어요. 다시 시도해주세요.');
+    }
+  };
+
+  const goCreateGoal = () => {
+    // 지금 참여하려던 방 id를 들고 목표 생성 페이지로 이동. 만들고 나면 이 페이지로 다시 돌아와서 모달이 자동으로 열림.
+    navigate('/make', { state: { fromRoom: joinTarget.id } });
   };
 
   const enterRoom = (room) => navigate(`/social/${room.id}`, { state: { room } });
 
   const handleLeave = async (roomId) => {
     if (!confirm('정말 이 방을 탈퇴하시겠어요?')) return;
-    try { await leaveCrew(roomId); } catch (error) {
-      console.warn('탈퇴 서버 연동 실패, 로컬로 처리합니다.', error.message);
-    }
-    setJoined(prev => { const next = new Set(prev); next.delete(roomId); return next; });
-    setRooms(prev => {
-      const updated = prev.map(r => String(r.id) === roomId ? { ...r, members: Math.max(0, r.members - 1) } : r);
-      return updated.filter(r => r.members > 0);
-    });
     try {
-      const savedGoals = JSON.parse(localStorage.getItem('todoongsilRoomGoal') || '{}');
-      delete savedGoals[roomId];
-      localStorage.setItem('todoongsilRoomGoal', JSON.stringify(savedGoals));
-    } catch {}
+      await leaveCrew(roomId);
+      await fetchRooms();
+    } catch (error) {
+      alert('탈퇴에 실패했어요. 다시 시도해주세요.');
+    }
   };
 
   const inputStyle = {
@@ -140,7 +124,7 @@ function SocialPage() {
         <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px', background: 'rgba(12,74,110,.25)', backdropFilter: 'blur(6px)' }} onClick={() => setShowCreate(false)}>
           <div style={{ width: '100%', maxWidth: 448, borderRadius: '24px', padding: '24px', background: '#fff' }} onClick={event => event.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 800, color: C.deep }}>새 소셜 방 만들기</h3>
+              <h3 style={{ fontSize: '16px', fontWeight: 800, color: C.deep }}>새 소셜 방 만들기</h3>
               <button onClick={() => setShowCreate(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: C.muted }}><X size={16} /></button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: '8px', marginBottom: '16px' }}>
@@ -155,7 +139,44 @@ function SocialPage() {
         </div>
       )}
 
-      <div style={{ maxWidth: '960px', margin: '0 auto', padding: '28px 16px' }}>
+      {joinTarget && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px', background: 'rgba(12,74,110,.25)', backdropFilter: 'blur(6px)' }} onClick={() => setJoinTarget(null)}>
+          <div style={{ width: '100%', maxWidth: 400, borderRadius: '24px', padding: '24px', background: '#fff' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: 800, margin: 0, color: C.deep }}>같이할 목표를 선택하세요</h3>
+                <p style={{ fontSize: '12px', color: C.muted, margin: '4px 0 0' }}>"{joinTarget.name}"</p>
+              </div>
+              <button onClick={() => setJoinTarget(null)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: C.muted, flexShrink: 0 }}><X size={16} /></button>
+            </div>
+
+            {myGoals.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+                {myGoals.map(g => (
+                  <button key={g.id} onClick={() => confirmJoin(g.id)} style={{ padding: '10px 14px', borderRadius: '12px', border: `2px solid ${C.border}`, background: '#F0FBFF', textAlign: 'left', cursor: 'pointer', fontWeight: 700, color: C.deep }}>
+                    {g.title || g.goalName}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p style={{ fontSize: '13px', color: C.muted, margin: '0 0 14px', textAlign: 'center', padding: '12px 0' }}>
+                아직 만든 목표가 없어요.
+              </p>
+            )}
+
+            <button onClick={goCreateGoal} style={{
+              width: '100%', padding: '10px 14px', borderRadius: '12px', border: `2px dashed ${C.border}`,
+              background: '#fff', textAlign: 'center', cursor: 'pointer', fontWeight: 700,
+              color: C.ocean, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              fontSize: '13px'
+            }}>
+              <Plus size={14} /> 이 방에 맞는 새 목표 만들러 가기
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div style={{ maxWidth: '960px', margin: '0 auto', padding: '28px 16px 48px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: 12 }}>
           <div>
             <h1 style={{ fontSize: '24px', fontWeight: 800, color: C.deep, margin: 0 }}>소셜 방</h1>
@@ -172,7 +193,7 @@ function SocialPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: '12px' }}>
           {list.map(room => {
             const roomId = String(room.id);
-            const isJoined = joined.has(roomId);
+            const isJoined = room.memberUids?.includes(myUid);
             const isLiked = liked.has(roomId);
             return (
               <Card key={roomId}>
@@ -190,10 +211,10 @@ function SocialPage() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <span style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, color: C.muted }}><Users size={14} />{room.members}명</span>
-                      <button onClick={() => setLiked(prev => { const next = new Set(prev); next.has(roomId) ? next.delete(roomId) : next.add(roomId); return next; })} style={{ display: 'flex', alignItems: 'center', gap: 4, border: 'none', background: 'none', cursor: 'pointer', color: isLiked ? '#F472B6' : '#BAE6FD', fontSize: 13, padding: 0 }}><Heart size={14} fill={isLiked ? 'currentColor' : 'none'} />{room.likes + (isLiked ? 1 : 0)}</button>
+                      <button onClick={() => setLiked(prev => { const next = new Set(prev); next.has(roomId) ? next.delete(roomId) : next.add(roomId); return next; })} style={{ display: 'flex', alignItems: 'center', gap: 4, border: 'none', background: 'none', cursor: 'pointer', color: isLiked ? '#F472B6' : '#BAE6FD', fontSize: 13, padding: 0 }}><Heart size={14} fill={isLiked ? 'currentColor' : 'none'} />{isLiked ? 1 : 0}</button>
                     </div>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <button onClick={() => isJoined ? enterRoom(room) : handleJoin(room)} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 700, padding: '6px 14px', borderRadius: 10, cursor: 'pointer', ...(isJoined ? { background: '#E0F7FF', color: C.ocean, border: `1.5px solid ${C.border}` } : { background: GRAD, color: '#fff', border: '1.5px solid transparent' }) }}>
+                      <button onClick={() => isJoined ? enterRoom(room) : openJoinModal(room)} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 700, padding: '6px 14px', borderRadius: 10, cursor: 'pointer', ...(isJoined ? { background: '#E0F7FF', color: C.ocean, border: `1.5px solid ${C.border}` } : { background: GRAD, color: '#fff', border: '1.5px solid transparent' }) }}>
                         {isJoined ? <><LogIn size={13} />입장</> : <><MessageCircle size={13} />참여</>}
                       </button>
                       {isJoined && <button onClick={() => handleLeave(roomId)} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 700, padding: '6px 14px', borderRadius: 10, cursor: 'pointer', background: '#FEF2F2', color: '#EF4444', border: '1.5px solid #FCA5A5' }}>

@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import Jelly, { JELLY_IMAGES, HAT_IMAGES, EXPRESSION_IMAGES, EFFECT_IMAGES } from '../Auth/components/Jelly';
 import Card from '../Auth/components/Card';
-import PrimaryBtn from '../Auth/components/PrimaryBtn';
 import { C, GRAD, PAGE_BG } from '../Auth/components/tokens';
 import { getMyCharacter, getGoals, getTodos } from '../../services/api';
 import { useCoins } from '../../context/CoinContext';
@@ -253,9 +252,9 @@ function ProfilePage() {
         }
 
         .profile-container {
-          width: min(1080px, calc(100% - 32px));
+          width: min(960px, calc(100% - 32px));
           margin: 0 auto;
-          padding: 32px 0 56px;
+          padding: 28px 0 48px;
         }
 
         .profile-page-title {
@@ -265,7 +264,7 @@ function ProfilePage() {
         .profile-page-title h1 {
           margin: 0;
           color: ${C.deep};
-          font-size: 26px;
+          font-size: 24px;
           font-weight: 900;
           letter-spacing: -0.03em;
         }
@@ -351,11 +350,11 @@ function ProfilePage() {
         }
 
         .profile-section-heading h2 {
-          font-size: 21px;
+          font-size: 18px;
         }
 
         .profile-section-heading h3 {
-          font-size: 17px;
+          font-size: 16px;
         }
 
         .profile-section-heading p {
@@ -508,7 +507,7 @@ function ProfilePage() {
         .stat-value {
           margin: 17px 0 5px;
           color: ${C.deep};
-          font-size: 24px;
+          font-size: 20px;
           font-weight: 900;
           letter-spacing: -0.03em;
         }
@@ -567,7 +566,7 @@ function ProfilePage() {
         .photo-empty-state h3 {
           margin: 16px 0 8px;
           color: ${C.deep};
-          font-size: 20px;
+          font-size: 18px;
           font-weight: 900;
         }
 
@@ -617,7 +616,7 @@ function ProfilePage() {
 
           .stat-value {
             margin: 0 0 3px;
-            font-size: 20px;
+            font-size: 18px;
           }
 
           .stat-label {
@@ -694,7 +693,7 @@ function ProfilePage() {
                       style={{
                         margin: 0,
                         color: C.deep,
-                        fontSize: 22,
+                        fontSize: 18,
                         fontWeight: 900,
                       }}
                     >
@@ -996,7 +995,7 @@ function ProfilePage() {
                           style={{
                             margin: 0,
                             color: C.deep,
-                            fontSize: 15,
+                            fontSize: 14,
                             fontWeight: 900,
                           }}
                         >
@@ -1015,7 +1014,7 @@ function ProfilePage() {
                       <strong
                         style={{
                           color: C.ocean,
-                          fontSize: 24,
+                          fontSize: 20,
                           fontWeight: 900,
                         }}
                       >

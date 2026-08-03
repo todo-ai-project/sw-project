@@ -59,33 +59,6 @@ async function claimOnce(uid, claimKey, coinAmount) {
 
 
 
-/**
- * 오늘 완료한 미션 상태 조회
- */
-async function getTodayStatus(uid) {
-
-  const dateKey = getTodayKey();
-
-  const docRef = dailyRewardsCollection()
-    .doc(`${uid}_${dateKey}`);
-
-
-  const doc = await docRef.get();
-
-
-  if (!doc.exists) {
-    return {};
-  }
-
-
-  return doc.data().claims || {};
-}
-
-module.exports = {
-  claimOnce,
-  getTodayStatus
-};
-
 async function getTodayClaims(uid) {
   const dateKey = getTodayKey();
 
@@ -102,3 +75,8 @@ async function getTodayClaims(uid) {
 
   return Object.keys(claims);
 }
+
+module.exports = {
+  claimOnce,
+  getTodayClaims
+};

@@ -14,6 +14,10 @@ async function generateMandalart(goalText) {
    가정하고 그 안에 끝낼 수 있는 현실적인 항목들로 구성하세요.
 3. 각 항목은 실제로 실행 가능한 행동 단위여야 하며, "열심히 하기" 같은 추상적인
    구호는 피하세요.
+4. 각 항목 앞에 "1개월차:", "2주차:", "3일차:", "D-10:"처럼 시간/기간을 나타내는
+   접두어를 붙이지 마세요. 화면에서 각 항목의 예상 마감일(디데이)이 별도 뱃지로
+   이미 표시되기 때문에, 텍스트에는 실천 내용만 담아주세요.
+   (예: "1개월차: 매일 토익 어휘 50개 암기하기" ❌ -> "매일 토익 어휘 50개 암기하기" ✅)
 
 사용자 목표: "${goalText}"
 
@@ -24,7 +28,14 @@ async function generateMandalart(goalText) {
 }
 `;
 
-  const result = await geminiModel.generateContent(prompt);
+  console.time('gemini-call');
+  const result = await Promise.race([
+    geminiModel.generateContent(prompt),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('GEMINI_TIMEOUT: 10초 내 응답 없음')), 10000)
+    ),
+  ]);
+  console.timeEnd('gemini-call');
   const text = result.response.text().replace(/```json|```/g, '').trim();
 
   let parsed;

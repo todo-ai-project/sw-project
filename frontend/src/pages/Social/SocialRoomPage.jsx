@@ -17,6 +17,9 @@ const ALL_BACKGROUNDS = [
   { id: 'bg_shell', name: '조개 무대', value: 'shell', src: '/assets/backgrounds/back5.png' },
 ];
 
+// "오늘 할 일" 대신, 완료하지 않은 항목 중 순서상 가장 가까운 N개를 "다음 목표"로 보여줌
+const UPCOMING_COUNT = 3;
+
 function readJson(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; }
 }
@@ -93,8 +96,17 @@ export default function SocialRoomPage() {
     getTodos().then(data => {
       const filtered = (Array.isArray(data) ? data : [])
         .filter(t => (t.goalId || t.goalID) === selectedGoalId)
-        .map(t => ({ id: t.id, text: t.title || t.content || '', done: Boolean(t.completed ?? t.isDone) }));
-      setMyTodos(filtered);
+        .map(t => ({
+          id: t.id,
+          text: t.title || t.content || '',
+          done: Boolean(t.completed ?? t.isDone),
+          order: t.order ?? 0,
+        }))
+        .sort((a, b) => a.order - b.order);
+
+      // 완료 안 한 것 중 순서상 가장 가까운 N개만 "다음 목표"로 노출
+      const upcoming = filtered.filter(t => !t.done).slice(0, UPCOMING_COUNT);
+      setMyTodos(upcoming);
     }).catch(() => {});
   }, [selectedGoalId]);
 
@@ -242,8 +254,8 @@ export default function SocialRoomPage() {
         </div>
       )}
 
-      <div style={{ maxWidth: 880, margin: '0 auto', padding: '28px 16px 48px' }}>
-        <button onClick={() => navigate('/social')} style={{ border: 0, background: 'none', color: C.ocean, fontWeight: 800, display: 'flex', gap: 6 }}>
+      <div style={{ maxWidth: 960, margin: '0 auto', padding: '28px 16px 48px' }}>
+        <button onClick={() => navigate('/social')} style={{ border: 0, background: 'none', color: C.ocean, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6, marginBottom: '20px', cursor: 'pointer' }}>
           <ArrowLeft size={16} />소셜 방 목록
         </button>
 
@@ -252,8 +264,8 @@ export default function SocialRoomPage() {
             <div style={{ display: 'flex', gap: 14, alignItems: 'center', minWidth: 0, flex: 1 }}>
               <div style={{ width: 54, height: 54, borderRadius: 18, background: '#E0F7FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0 }}>{room.emoji || '🌊'}</div>
               <div style={{ minWidth: 0 }}>
-                <h1 style={{ fontSize: 22, margin: 0, color: C.deep, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{room.name}</h1>
-                <p style={{ fontSize: 13, color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedGoal ? <><Target size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 3 }} />{selectedGoal.title}</> : (room.goal || room.description)}</p>
+                <h1 style={{ fontSize: 24, margin: 0, color: C.deep, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{room.name}</h1>
+                <p style={{ fontSize: 13, color: C.muted, marginTop: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedGoal ? <><Target size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 3 }} />{selectedGoal.title}</> : (room.goal || room.description)}</p>
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0 }}>
@@ -280,8 +292,8 @@ export default function SocialRoomPage() {
             <div style={{ padding: 20 }}>
               {selectedGoal && (
                 <div style={{ marginBottom: 16 }}>
-                  <h2 style={{ fontSize: 16, color: C.deep, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    나의 오늘 할 일
+                  <h2 style={{ fontSize: 14, fontWeight: 800, color: C.deep, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    나의 다음 목표
                   </h2>
                   <div style={{ padding: 13, borderRadius: 16, background: '#EFF8FF', border: `1.5px solid ${C.border}` }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 9 }}>
@@ -295,14 +307,14 @@ export default function SocialRoomPage() {
                         <span style={{ textDecoration: t.done ? 'line-through' : 'none' }}>{t.text}</span>
                       </div>
                     )) : (
-                      <p style={{ fontSize: 12, color: C.muted, margin: '6px 0' }}>아직 할 일이 없어요</p>
+                      <p style={{ fontSize: 12, color: C.muted, margin: '6px 0' }}>모든 단계를 완료했어요! 🎉</p>
                     )}
                   </div>
                 </div>
               )}
 
-              <h2 style={{ fontSize: 16, color: C.deep, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Target size={15} /> 친구들의 오늘 투두
+              <h2 style={{ fontSize: 14, fontWeight: 800, color: C.deep, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Target size={14} /> 친구들의 다음 목표
               </h2>
               {friends.length > 0 ? friends.map(m => (
                 <div key={m.name} style={{ padding: 13, borderRadius: 16, background: '#F8FCFF', marginBottom: 9 }}>
@@ -337,7 +349,7 @@ export default function SocialRoomPage() {
 
           <Card>
             <div style={{ padding: 20 }}>
-              <h2 style={{ fontSize: 18, color: C.deep, display: 'flex', gap: 6 }}><Users size={17} />멤버</h2>
+              <h2 style={{ fontSize: 16, color: C.deep, display: 'flex', gap: 6, fontWeight: 800 }}><Users size={15} />멤버</h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 12 }}>
                 <Jelly colorIndex={myColorIndex} size={0.42} />
                 <span style={{ fontSize: 13, fontWeight: 700, color: C.deep }}>{myName} (나)</span>

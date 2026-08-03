@@ -35,7 +35,7 @@ function AnalyzePage({ userGoal, isLoading, result, error, onGoToList, onReset }
       padding: '56px 16px 16px', position: 'relative', background: PAGE_BG
     }}>
       <Bubbles n={5} />
-      <div style={{ width: '100%', maxWidth: '520px', position: 'relative', zIndex: 10, animation: 'fadeInUp .4s ease-out' }}>
+      <div style={{ width: '100%', maxWidth: '700px', position: 'relative', zIndex: 10, animation: 'fadeInUp .4s ease-out' }}>
         {isLoading ? (
           <Card>
             <div style={{ padding: '32px', textAlign: 'center' }}>
@@ -43,7 +43,7 @@ function AnalyzePage({ userGoal, isLoading, result, error, onGoToList, onReset }
                 <Jelly colorIndex={0} size={0.9} float />
               </div>
               <p style={{ fontSize: '12px', marginBottom: '4px', color: C.muted, fontFamily: "'Nunito', sans-serif" }}>분석 중</p>
-              <p style={{ fontSize: '16px', fontWeight: 700, marginBottom: '24px', color: C.deep, fontFamily: "'Nunito', sans-serif" }}>
+              <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '24px', color: C.deep, fontFamily: "'Nunito', sans-serif" }}>
                 "{userGoal}"
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left', maxWidth: '280px', margin: '0 auto' }}>
@@ -112,7 +112,7 @@ function AnalyzePage({ userGoal, isLoading, result, error, onGoToList, onReset }
                           <CheckCircle2 size={16} style={{ color: C.ocean, flexShrink: 0 }} />
                           <div>
                             <span style={{
-                              fontSize: '10px', fontWeight: 700, padding: '2px 6px',
+                              fontSize: '11px', fontWeight: 700, padding: '2px 6px',
                               borderRadius: '4px', background: '#E0F7FF', color: C.ocean,
                               fontFamily: "'Nunito', sans-serif", marginRight: '8px'
                             }}>{category}</span>

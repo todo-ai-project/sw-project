@@ -5,7 +5,7 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:50
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 15000,
+  timeout: 30000,
 });
 
 api.interceptors.request.use(async (config) => {
@@ -100,9 +100,8 @@ export async function createCrew(payload) {
   return data;
 }
 
-export async function joinCrew(crewId) {
-  requireAuth();
-  const { data } = await api.post(`/crews/${crewId}/join`);
+export async function joinCrew(crewId, goalId) {
+  const { data } = await api.post(`/crews/${crewId}/join`, { goalId });
   return data;
 }
 
@@ -114,7 +113,7 @@ export async function leaveCrew(crewId) {
 
 export async function getCrewTodos(crewId) {
   requireAuth();
-  const { data } = await api.get(`/crews/${crewId}/todos`);
+  const { data } = await api.get(`/crews/${crewId}/today-todos`);
   return Array.isArray(data) ? data : data.data || [];
 }
 
@@ -127,12 +126,6 @@ export async function getCrewMembers(crewId) {
 export async function claimMission(missionId) {
   requireAuth();
   const { data } = await api.post('/missions/claim', { missionId });
-  return data;
-}
-
-export async function getMissionStatus() {
-  requireAuth();
-  const { data } = await api.get('/missions/status');
   return data;
 }
 
