@@ -7,6 +7,7 @@ const crewStore = new FirestoreService('crews');
 const crewMemberStore = new FirestoreService('crewMembers'); // {uid, crewId, goalId} - 문서 id: `${uid}_${crewId}`
 const userStore = new FirestoreService('users');
 const todoStore = new FirestoreService('todos');
+const goalStore = new FirestoreService('goals');
 
 async function getCrews(req, res, next) {
   try {
@@ -124,16 +125,23 @@ async function leaveCrew(req, res, next) {
 async function getCrewMembers(req, res, next) {
   try {
     const members = await crewMemberStore.getAllByField('crewId', req.params.id);
-    const withProfiles = await Promise.all(
-      members.map(async (m) => {
-        const user = await userStore.getById(m.uid);
-        return {
-          uid: m.uid,
-          goalId: m.goalId,
-          nickname: user?.nickname || user?.email || '익명',
-        };
-      })
-    );
+    const withProfiles = [];
+    const toDelete = [];
+    for (const m of members) {
+      const user = await userStore.getById(m.uid);
+      if (!user) {
+        toDelete.push(m);
+        continue;
+      }
+      withProfiles.push({
+        uid: m.uid,
+        goalId: m.goalId,
+        nickname: user.nickname || user.email || '익명',
+      });
+    }
+    if (toDelete.length) {
+      await Promise.all(toDelete.map(m => crewMemberStore.delete(`${m.uid}_${req.params.id}`)));
+    }
     res.json(withProfiles);
   } catch (err) {
     next(err);
@@ -148,13 +156,17 @@ async function getCrewTodayTodos(req, res, next) {
     const result = [];
     for (const member of members) {
       const user = await userStore.getById(member.uid);
+      if (!user) continue;
       if (!member.goalId) {
-        result.push({ uid: member.uid, nickname: user?.nickname || user?.email, todos: [] });
+        result.push({ uid: member.uid, nickname: user.nickname || user.email, todos: [] });
         continue;
       }
-      const todos = await todoStore.getAllByField('goalId', member.goalId);
+      const [goal, todos] = await Promise.all([
+        goalStore.getById(member.goalId),
+        todoStore.getAllByField('goalId', member.goalId),
+      ]);
       todos.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-      result.push({ uid: member.uid, nickname: user?.nickname || user?.email, goalId: member.goalId, todos });
+      result.push({ uid: member.uid, nickname: user.nickname || user.email, goalId: member.goalId, goalTitle: goal?.title || '', todos });
     }
 
     res.json(result);
@@ -180,7 +192,37 @@ async function addPhotoReward(req, res, next) {
   }
 }
 
+/**
+ * DB를 전수조사하여 멤버가 0명인 크루를 찾아 일괄 삭제하는 함수
+ */
+async function cleanupEmptyCrews() {
+  try {
+    const snapshot = await crewStore.collection.get();
+    const crews = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+    const memberSnapshot = await crewMemberStore.collection.get();
+    const memberCounts = {};
+    memberSnapshot.docs.forEach((doc) => {
+      const { crewId } = doc.data();
+      if (crewId) {
+        memberCounts[crewId] = (memberCounts[crewId] || 0) + 1;
+      }
+    });
+
+    const emptyCrewIds = crews
+      .filter((c) => !memberCounts[c.id] || memberCounts[c.id] === 0)
+      .map((c) => c.id);
+
+    if (emptyCrewIds.length > 0) {
+      await Promise.all(emptyCrewIds.map((id) => crewStore.delete(id)));
+      console.log(`🧹 [자동 청소] 멤버가 0명인 빈 소셜방 ${emptyCrewIds.length개}가 삭제되었습니다.`);
+    }
+  } catch (err) {
+    console.error('❌ 빈 크루 청소 중 에러 발생:', err);
+  }
+}
+
 module.exports = {
   getCrews, getCrewById, createCrew, joinCrew, leaveCrew,
-  getCrewMembers, getCrewTodayTodos, addPhotoReward,
+  getCrewMembers, getCrewTodayTodos, addPhotoReward, cleanupEmptyCrews,
 };

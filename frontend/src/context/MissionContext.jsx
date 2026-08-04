@@ -28,7 +28,6 @@ function claimedKeys(saved) {
 const REWARD_MESSAGES = {
   'attendance': (r) => ({ title: '출석 완료!', message: `${new Date().getMonth() + 1}월 ${new Date().getDate()}일 출석 완료! ${r}코인을 획득했어요!` }),
   'enter-room': (r) => ({ title: '소셜 방 입장!', message: `소셜 방에 입장하고 ${r}코인을 획득했어요!` }),
-  'team-complete': (r) => ({ title: '팀 완료 보너스!', message: `팀원 모두 오늘의 투두를 완료! ${r}코인 획득!` }),
   'room-photo': (r, meta) => ({ title: '사진 촬영!', message: `${meta?.friendName || '친구'}와(과) 사진을 찍고 ${r}코인을 획득했어요!` }),
   'todo-done': (r) => ({ title: '할 일 완료!', message: `오늘의 할 일을 달성하고 ${r}코인을 획득했어요!` }),
   'goal-complete': (r) => ({ title: '대목표 달성!', message: `목표를 100% 달성하고 ${r}코인을 획득했어요!` }),
@@ -37,7 +36,6 @@ const REWARD_MESSAGES = {
 export const MISSION_DEFS = [
   { id: 'attendance', title: '출석 체크', desc: '00시 이후 접속하면 자동 완료', reward: 2, path: '/goals', iconType: 'attendance' },
   { id: 'enter-room', title: '소셜 방 입장', desc: '참여 중인 소셜 방에 입장하기 (하루 1회)', reward: 5, path: '/social', iconType: 'enter-room' },
-  { id: 'team-complete', title: '팀 투두 완료', desc: '팀원들이 오늘 할 일을 모두 완료', reward: 3, path: '/social', iconType: 'team-complete' },
   { id: 'room-photo', title: '친구와 사진 찍기', desc: '소셜 방에서 친구와 사진 촬영 (친구당 하루 1회)', reward: 3, path: '/social', iconType: 'room-photo' },
   { id: 'todo-done', title: '할 일 달성', desc: '목표당 하루 1개 할 일 완료 시 지급', reward: 1, path: '/goals', iconType: 'todo-done' },
   { id: 'goal-complete', title: '대목표 100% 달성', desc: '대목표의 모든 할 일을 완료', reward: 15, path: '/goals', iconType: 'goal-complete' },

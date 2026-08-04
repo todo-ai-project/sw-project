@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Check, Coins, Trophy, CalendarCheck, DoorOpen, UsersRound, Camera, CircleCheckBig, Target } from 'lucide-react';
+import { Check, Coins, Trophy, CalendarCheck, DoorOpen, Camera, CircleCheckBig, Target } from 'lucide-react';
 import Card from '../Auth/components/Card';
 import { C, GRAD, PAGE_BG } from '../Auth/components/tokens';
 import { useMissions } from '../../context/MissionContext';
@@ -8,7 +8,6 @@ const ICON_COLOR = '#0EA5E9';
 const MISSION_ICONS = {
   'attendance': <CalendarCheck size={26} color={ICON_COLOR} />,
   'enter-room': <DoorOpen size={26} color={ICON_COLOR} />,
-  'team-complete': <UsersRound size={26} color={ICON_COLOR} />,
   'room-photo': <Camera size={26} color={ICON_COLOR} />,
   'todo-done': <CircleCheckBig size={26} color={ICON_COLOR} />,
   'goal-complete': <Target size={26} color={ICON_COLOR} />,

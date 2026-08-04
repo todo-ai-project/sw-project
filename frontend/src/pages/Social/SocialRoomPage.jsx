@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Camera, Check, Users, X, Target, Coins } from 'lucide-react';
+import { ArrowLeft, Camera, Check, Users, X, Target } from 'lucide-react';
 import Card from '../Auth/components/Card';
 import Jelly from '../Auth/components/Jelly';
 import PrimaryBtn from '../Auth/components/PrimaryBtn';
 import { C, GRAD, PAGE_BG } from '../Auth/components/tokens';
 import { useMissions } from '../../context/MissionContext';
 import { getGoals, getTodos, getCrewTodos, getCrewMembers, leaveCrew } from '../../services/api';
+import { getAuth } from 'firebase/auth';
 
 const ALL_BACKGROUNDS = [
   { id: 'bg_none', name: '기본', value: '', src: null },
@@ -53,12 +54,9 @@ export default function SocialRoomPage() {
   const [photoBgIdx, setPhotoBgIdx] = useState(0);
   const ownedItems = readJson('todoongsilOwnedItems', ['bg_none']);
   const ownedBgs = ALL_BACKGROUNDS.filter(bg => bg.id === 'bg_none' || ownedItems.includes(bg.id));
-  const [teamBonusClaimed, setTeamBonusClaimed] = useState(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    return readJson('todoongsilTeamBonus', {})[`${roomId}:${today}`] || false;
-  });
 
-  const friends = useMemo(() => members.filter(m => m.name !== myName), [members, myName]);
+  const myUid = getAuth().currentUser?.uid;
+  const friends = useMemo(() => members.filter(m => m.uid !== myUid), [members, myUid]);
 
   useEffect(() => { completeMission('enter-room'); }, [completeMission]);
 
@@ -67,6 +65,7 @@ export default function SocialRoomPage() {
     getCrewMembers(roomId).then(data => {
       if (Array.isArray(data) && data.length > 0) {
         setMembers(data.map((m, i) => ({
+          uid: m.uid,
           name: m.nickname || m.name || `멤버 ${i + 1}`,
           colorIndex: i % 6,
         })));
@@ -137,11 +136,6 @@ export default function SocialRoomPage() {
     delete savedGoals[roomId];
     localStorage.setItem('todoongsilRoomGoal', JSON.stringify(savedGoals));
     navigate('/social');
-  };
-
-  const claimTeamBonus = () => {
-    completeMission('team-complete');
-    setTeamBonusClaimed(true);
   };
 
   const take = () => {
@@ -316,33 +310,35 @@ export default function SocialRoomPage() {
               <h2 style={{ fontSize: 14, fontWeight: 800, color: C.deep, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Target size={14} /> 친구들의 다음 목표
               </h2>
-              {friends.length > 0 ? friends.map(m => (
-                <div key={m.name} style={{ padding: 13, borderRadius: 16, background: '#F8FCFF', marginBottom: 9 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 9 }}>
-                    <Jelly colorIndex={m.colorIndex} size={0.42} />
-                    <b style={{ color: C.deep }}>{m.name}</b>
+              {friends.length > 0 ? friends.map(m => {
+                const entry = friendTodos.find(ft => ft.uid === m.uid);
+                const todos = (entry?.todos || [])
+                  .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+                  .slice(0, UPCOMING_COUNT);
+                return (
+                  <div key={m.uid} style={{ padding: 13, borderRadius: 16, background: '#F8FCFF', marginBottom: 9 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 9 }}>
+                      <Jelly colorIndex={m.colorIndex} size={0.42} />
+                      <b style={{ color: C.deep }}>{m.name}</b>
+                      {entry?.goalTitle && (
+                        <span style={{ fontSize: 11, color: C.muted, marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 3 }}>
+                          <Target size={11} />{entry.goalTitle}
+                        </span>
+                      )}
+                    </div>
+                    {todos.length > 0
+                      ? todos.map((t, i) => (
+                          <div key={t.id || i} style={{ display: 'flex', gap: 8, fontSize: 13, color: t.completed ? C.subtle : C.deep, margin: '6px 0' }}>
+                            <span>{t.completed ? <Check size={14} color="#10B981" /> : '○'}</span>
+                            <span style={{ textDecoration: t.completed ? 'line-through' : 'none' }}>{t.title}</span>
+                          </div>
+                        ))
+                      : <p style={{ fontSize: 12, color: C.muted, margin: '4px 0' }}>아직 공유된 할 일이 없어요</p>
+                    }
                   </div>
-                  {friendTodos.length > 0
-                    ? friendTodos.slice(0, 3).map((t, i) => (
-                        <div key={i} style={{ display: 'flex', gap: 8, fontSize: 13, color: t.completed ? C.subtle : C.deep, margin: '6px 0' }}>
-                          <span>{t.completed ? <Check size={14} color="#10B981" /> : '○'}</span>
-                          <span style={{ textDecoration: t.completed ? 'line-through' : 'none' }}>{t.title || t.text}</span>
-                        </div>
-                      ))
-                    : <p style={{ fontSize: 12, color: C.muted, margin: '4px 0' }}>아직 공유된 할 일이 없어요</p>
-                  }
-                </div>
-              )) : (
+                );
+              }) : (
                 <p style={{ fontSize: 13, color: C.muted, textAlign: 'center', padding: '16px 0' }}>아직 참여한 친구가 없어요</p>
-              )}
-              {!teamBonusClaimed && friends.length > 0 && (
-                <button onClick={claimTeamBonus} style={{
-                  width: '100%', marginTop: 12, padding: 12, borderRadius: 14, border: 0,
-                  background: GRAD, color: '#fff', fontWeight: 800, cursor: 'pointer',
-                  display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6
-                }}>
-                  <Coins size={14} /> 팀 완료 보너스 +3코인 받기
-                </button>
               )}
             </div>
           </Card>
