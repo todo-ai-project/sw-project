@@ -111,6 +111,12 @@ export async function leaveCrew(crewId) {
   return data;
 }
 
+export async function updateCrewGoal(crewId, goalId) {
+  requireAuth();
+  const { data } = await api.put(`/crews/${crewId}/goal`, { goalId });
+  return data;
+}
+
 export async function getCrewTodos(crewId) {
   requireAuth();
   const { data } = await api.get(`/crews/${crewId}/today-todos`);

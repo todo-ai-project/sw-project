@@ -16,7 +16,9 @@ function SocialPage() {
   const location = useLocation();
   const { refreshCoins } = useCoins();
   const [rooms, setRooms] = useState([]);
-  const [liked, setLiked] = useState(new Set());
+  const [liked, setLiked] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('todoongsilLikedRooms')) || []); } catch { return new Set(); }
+  });
   const [filter, setFilter] = useState('all');
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
@@ -211,7 +213,7 @@ function SocialPage() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <span style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, color: C.muted }}><Users size={14} />{room.members}명</span>
-                      <button onClick={() => setLiked(prev => { const next = new Set(prev); next.has(roomId) ? next.delete(roomId) : next.add(roomId); return next; })} style={{ display: 'flex', alignItems: 'center', gap: 4, border: 'none', background: 'none', cursor: 'pointer', color: isLiked ? '#F472B6' : '#BAE6FD', fontSize: 13, padding: 0 }}><Heart size={14} fill={isLiked ? 'currentColor' : 'none'} />{isLiked ? 1 : 0}</button>
+                      <button onClick={() => setLiked(prev => { const next = new Set(prev); next.has(roomId) ? next.delete(roomId) : next.add(roomId); localStorage.setItem('todoongsilLikedRooms', JSON.stringify([...next])); return next; })} style={{ display: 'flex', alignItems: 'center', gap: 4, border: 'none', background: 'none', cursor: 'pointer', color: isLiked ? '#F472B6' : '#BAE6FD', fontSize: 13, padding: 0 }}><Heart size={14} fill={isLiked ? 'currentColor' : 'none'} />{isLiked ? 1 : 0}</button>
                     </div>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button onClick={() => isJoined ? enterRoom(room) : openJoinModal(room)} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 700, padding: '6px 14px', borderRadius: 10, cursor: 'pointer', ...(isJoined ? { background: '#E0F7FF', color: C.ocean, border: `1.5px solid ${C.border}` } : { background: GRAD, color: '#fff', border: '1.5px solid transparent' }) }}>

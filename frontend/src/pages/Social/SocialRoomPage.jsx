@@ -6,7 +6,7 @@ import Jelly from '../Auth/components/Jelly';
 import PrimaryBtn from '../Auth/components/PrimaryBtn';
 import { C, GRAD, PAGE_BG } from '../Auth/components/tokens';
 import { useMissions } from '../../context/MissionContext';
-import { getGoals, getTodos, getCrewTodos, getCrewMembers, leaveCrew } from '../../services/api';
+import { getGoals, getTodos, getCrewTodos, getCrewMembers, leaveCrew, updateCrewGoal } from '../../services/api';
 import { getAuth } from 'firebase/auth';
 
 const ALL_BACKGROUNDS = [
@@ -59,6 +59,12 @@ export default function SocialRoomPage() {
   const friends = useMemo(() => members.filter(m => m.uid !== myUid), [members, myUid]);
 
   useEffect(() => { completeMission('enter-room'); }, [completeMission]);
+
+  useEffect(() => {
+    if (roomId && selectedGoalId) {
+      updateCrewGoal(roomId, selectedGoalId).catch(() => {});
+    }
+  }, [roomId, selectedGoalId]);
 
   useEffect(() => {
     if (!roomId) return;
@@ -116,11 +122,12 @@ export default function SocialRoomPage() {
     }).catch(() => {});
   }, [roomId]);
 
-  const selectGoal = (goalId) => {
+  const selectGoal = async (goalId) => {
     setSelectedGoalId(goalId);
     const saved = readJson('todoongsilRoomGoal', {});
     saved[roomId] = goalId;
     localStorage.setItem('todoongsilRoomGoal', JSON.stringify(saved));
+    try { await updateCrewGoal(roomId, goalId); } catch {}
   };
 
   const selectedGoal = myGoals.find(g => g.id === selectedGoalId);

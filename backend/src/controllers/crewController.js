@@ -184,6 +184,18 @@ async function getCrewTodayTodos(req, res, next) {
   }
 }
 
+async function updateMemberGoal(req, res, next) {
+  try {
+    const { goalId } = req.body;
+    if (!goalId) return res.status(400).json({ message: 'goalId는 필수입니다.' });
+    const docId = `${req.user.uid}_${req.params.id}`;
+    await crewMemberStore.update(docId, { goalId });
+    res.json({ crewId: req.params.id, goalId });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // 친구와 사진 촬영 -> 친구 1명당 하루 1회 코인
 async function addPhotoReward(req, res, next) {
   try {
@@ -233,5 +245,5 @@ async function cleanupEmptyCrews() {
 
 module.exports = {
   getCrews, getCrewById, createCrew, joinCrew, leaveCrew,
-  getCrewMembers, getCrewTodayTodos, addPhotoReward, cleanupEmptyCrews,
+  getCrewMembers, getCrewTodayTodos, updateMemberGoal, addPhotoReward, cleanupEmptyCrews,
 };
