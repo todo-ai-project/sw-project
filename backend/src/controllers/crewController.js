@@ -16,12 +16,21 @@ async function getCrews(req, res, next) {
 
     const memberSnapshot = await crewMemberStore.collection.get();
     const membersByCrewId = {};
-    memberSnapshot.docs.forEach((doc) => {
+    const deleteOrphans = [];
+    for (const doc of memberSnapshot.docs) {
       const { crewId, uid } = doc.data();
-      if (!crewId || !uid) return;
+      if (!crewId || !uid) continue;
+      const user = await userStore.getById(uid);
+      if (!user) {
+        deleteOrphans.push(doc.id);
+        continue;
+      }
       if (!membersByCrewId[crewId]) membersByCrewId[crewId] = [];
       membersByCrewId[crewId].push(uid);
-    });
+    }
+    if (deleteOrphans.length) {
+      await Promise.all(deleteOrphans.map((id) => crewMemberStore.collection.doc(id).delete()));
+    }
 
     const emptyCrewIds = crews
       .filter((c) => !membersByCrewId[c.id]?.length)
