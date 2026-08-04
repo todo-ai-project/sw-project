@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Plus, Users, Heart, LogOut, MessageCircle, X, LogIn } from 'lucide-react';
+import { Plus, Users, LogOut, MessageCircle, X, LogIn } from 'lucide-react';
 import Card from '../Auth/components/Card';
 import PrimaryBtn from '../Auth/components/PrimaryBtn';
 import GhostBtn from '../Auth/components/GhostBtn';
@@ -16,9 +16,6 @@ function SocialPage() {
   const location = useLocation();
   const { refreshCoins } = useCoins();
   const [rooms, setRooms] = useState([]);
-  const [liked, setLiked] = useState(() => {
-    try { return new Set(JSON.parse(localStorage.getItem('todoongsilLikedRooms')) || []); } catch { return new Set(); }
-  });
   const [filter, setFilter] = useState('all');
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
@@ -196,7 +193,6 @@ function SocialPage() {
           {list.map(room => {
             const roomId = String(room.id);
             const isJoined = room.memberUids?.includes(myUid);
-            const isLiked = liked.has(roomId);
             return (
               <Card key={roomId}>
                 <div style={{ padding: '14px 16px 12px' }}>
@@ -210,11 +206,8 @@ function SocialPage() {
                       <p style={{ fontSize: 13, color: C.muted, margin: '3px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{room.goal}</p>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-evenly', gap: 8, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
                       <span style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 4, color: C.muted }}><Users size={14} />{room.members}명</span>
-                      <button onClick={() => setLiked(prev => { const next = new Set(prev); next.has(roomId) ? next.delete(roomId) : next.add(roomId); localStorage.setItem('todoongsilLikedRooms', JSON.stringify([...next])); return next; })} style={{ display: 'flex', alignItems: 'center', gap: 4, border: 'none', background: 'none', cursor: 'pointer', color: isLiked ? '#F472B6' : '#BAE6FD', fontSize: 13, padding: 0 }}><Heart size={14} fill={isLiked ? 'currentColor' : 'none'} /></button>
-                    </div>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button onClick={() => isJoined ? enterRoom(room) : openJoinModal(room)} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 700, padding: '6px 14px', borderRadius: 10, cursor: 'pointer', ...(isJoined ? { background: '#E0F7FF', color: C.ocean, border: `1.5px solid ${C.border}` } : { background: GRAD, color: '#fff', border: '1.5px solid transparent' }) }}>
                         {isJoined ? <><LogIn size={13} />입장</> : <><MessageCircle size={13} />참여</>}
